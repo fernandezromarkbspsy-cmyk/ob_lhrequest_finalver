@@ -1,0 +1,121 @@
+{{define "truck_requests.html"}}
+{{template "layout" .}}
+{{end}}
+
+{{define "content"}}
+<section class="queue-header" data-requests-page data-default-queue="all">
+  <div>
+    <p class="eyebrow">Midmile</p>
+    <h2>Truck Request</h2>
+  </div>
+  <div class="queue-actions">
+    <button class="ghost-button" type="button" data-export-csv><span class="ui-icon icon-download" aria-hidden="true"></span><span>Export CSV</span></button>
+  </div>
+</section>
+
+<section data-role-link="fte_mm" class="panel approval-strip">
+  <div>
+    <p class="eyebrow">FTE MM</p>
+    <h2>Pending Confirmation Queue</h2>
+  </div>
+  <strong data-mm-pending-count>{{.PendingMM}}</strong>
+</section>
+
+<section class="panel table-panel">
+  <div class="table-toolbar">
+    <label class="search-field">
+      <span>Search</span>
+      <input type="search" data-filter-search placeholder="Plate, trip, cluster">
+    </label>
+    <label>
+      <span>Date from</span>
+      <input type="date" data-filter-from>
+    </label>
+    <label>
+      <span>Date to</span>
+      <input type="date" data-filter-to>
+    </label>
+    <label>
+      <span>Status</span>
+      <select data-filter-status>
+        <option value="ALL">All</option>
+        <option value="PENDING_MM">Approved</option>
+        <option value="ASSIGNED">Assigned</option>
+        <option value="FOR_DOCKING">For Docking</option>
+        <option value="DOCKED">Docked</option>
+        <option value="CANCELED">Canceled</option>
+        <option value="REJECTED">Rejected</option>
+      </select>
+    </label>
+  </div>
+
+  <div class="data-table-wrap">
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th data-sort="request_date">Requested</th>
+          <th data-sort="cluster">Cluster</th>
+          <th data-sort="region">Region</th>
+          <th>Dock</th>
+          <th data-sort="backlogs">Backlogs</th>
+          <th>Truck</th>
+          <th data-sort="plate_number">Plate</th>
+          <th data-sort="driver_id">Driver</th>
+          <th>Trip No.</th>
+          <th>Docking Time</th>
+          <th data-sort="status">Status</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody data-request-table>
+        {{if .Requests}}
+          {{range .Requests}}
+          <tr>
+            <td>{{.RequestTimestamp}}</td>
+            <td>{{.Cluster}}</td>
+            <td>{{.Region}}</td>
+            <td>{{.DockNo}}</td>
+            <td>{{.Backlogs}}</td>
+            <td>{{.TruckSize}} {{.TruckType}}</td>
+            <td>{{if .PlateNumber}}{{.PlateNumber}}{{else}}-{{end}}</td>
+            <td>{{if .DriverID}}{{.DriverID}}{{else}}-{{end}}</td>
+            <td>{{if .LinehaulTripNo}}{{.LinehaulTripNo}}{{else}}-{{end}}</td>
+            <td>{{if .DockingTime}}{{.DockingTime}}{{else}}-{{end}}</td>
+            <td><span class="status-pill {{.Status}}">{{.StatusLabel}}</span></td>
+            <td><span class="muted">Loading</span></td>
+          </tr>
+          {{end}}
+        {{else}}
+          <tr><td colspan="12" class="empty-state">No truck requests found.</td></tr>
+        {{end}}
+      </tbody>
+    </table>
+  </div>
+  <div class="pagination-row">
+    <button class="ghost-button compact" type="button" data-page-prev><span class="ui-icon icon-arrow-left" aria-hidden="true"></span><span>Previous</span></button>
+    <span data-page-label>Page 1</span>
+    <button class="ghost-button compact" type="button" data-page-next><span>Next</span><span class="ui-icon icon-arrow-right" aria-hidden="true"></span></button>
+  </div>
+</section>
+
+<div class="modal-backdrop is-hidden" data-action-modal>
+  <section class="dialog small" role="dialog" aria-modal="true" aria-labelledby="action-title">
+    <button class="icon-button modal-close" type="button" data-close-action-modal aria-label="Close"><span class="ui-icon icon-close" aria-hidden="true"></span></button>
+    <h2 id="action-title" data-action-title>Update Request</h2>
+    <form class="form-grid single" data-action-form>
+      <input type="hidden" name="id" data-action-id>
+      <input type="hidden" name="action" data-action-type>
+      <label data-assign-field><span>FTE MM</span><input name="midmile_fte" data-current-user-name></label>
+      <label data-plate-field class="is-hidden"><span>Plate #</span><input name="plate_number"></label>
+      <label data-dock-field class="is-hidden"><span>Driver ID</span><input name="driver_id"></label>
+      <label data-dock-field class="is-hidden"><span>LHTrip #</span><input name="linehaul_trip_no"></label>
+      <label data-dock-field class="is-hidden"><span>Docking Time</span><input name="docking_time" type="datetime-local"></label>
+      <label data-reject-field class="is-hidden"><span>Remarks</span><textarea name="remarks" rows="4"></textarea></label>
+      <div class="form-actions">
+        <button class="ghost-button" type="button" data-close-action-modal><span class="ui-icon icon-close" aria-hidden="true"></span><span>Cancel</span></button>
+        <button class="primary-button" type="submit"><span class="ui-icon icon-check" aria-hidden="true"></span><span>Submit</span></button>
+      </div>
+    </form>
+  </section>
+</div>
+{{end}}

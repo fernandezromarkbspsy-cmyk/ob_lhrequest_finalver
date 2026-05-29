@@ -1,0 +1,197 @@
+{{define "layout"}}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{{.Title}} | SOC 5 Outbound</title>
+  <link rel="stylesheet" href="/static/app.css?v={{assetVersion "web/static/app.css"}}">
+  <script defer src="/static/app.js?v={{assetVersion "web/static/app.js"}}"></script>
+</head>
+
+<body class="{{if .BodyModifier}}{{.BodyModifier}}{{end}}">
+  <div class="app-shell">
+    <aside class="sidebar">
+      <a class="brand" href="/dashboard" aria-label="SOC 5 Outbound dashboard">
+        <span class="brand-mark"><img src="/static/icons/delivery.png" alt="" aria-hidden="true"></span>
+        <span>
+          <strong>OUTBOUND</strong>
+          <small>SOC 5</small>
+        </span>
+      </a>
+
+      <nav class="nav" aria-label="Primary navigation">
+        <p class="nav-label">Menu</p>
+        <a data-role-link="ops_pic fte_ops fte_mm dock_officer doc_officer" href="/dashboard" class="nav-link {{if eq .ActiveMenu "dashboard"}}is-active{{end}}">
+          <span class="nav-icon"><span class="ui-icon icon-dashboard" aria-hidden="true"></span></span>
+          <span>Dashboard</span>
+        </a>
+
+        <section data-role-link="ops_pic fte_ops" class="nav-group">
+          <button class="nav-group-button" type="button" aria-expanded="true">
+            <span class="nav-group-main">
+              <span class="nav-icon"><span class="ui-icon icon-box" aria-hidden="true"></span></span>
+              <span>Outbound</span>
+            </span>
+            <span class="chevron"><span class="ui-icon icon-chevron-down" aria-hidden="true"></span></span>
+          </button>
+          <div class="nav-group-items">
+            <a href="/outbound/lh-request" class="nav-link nav-child {{if eq .ActiveMenu "lh-request"}}is-active{{end}}">
+              <span class="nav-icon"><span class="ui-icon icon-truck" aria-hidden="true"></span></span>
+              <span>LH Request</span>
+              <span data-badge="ops" class="badge {{if .PendingOps}}has-items{{end}}">{{.PendingOps}}</span>
+            </a>
+          </div>
+        </section>
+
+        <section data-role-link="fte_mm" class="nav-group">
+          <button class="nav-group-button" type="button" aria-expanded="true">
+            <span class="nav-group-main">
+              <span class="nav-icon"><span class="ui-icon icon-box" aria-hidden="true"></span></span>
+              <span>Midmile</span>
+            </span>
+            <span class="chevron"><span class="ui-icon icon-chevron-down" aria-hidden="true"></span></span>
+          </button>
+          <div class="nav-group-items">
+            <a href="/midmile/truck-request" class="nav-link nav-child {{if eq .ActiveMenu "truck-request"}}is-active{{end}}">
+              <span class="nav-icon"><span class="ui-icon icon-clock" aria-hidden="true"></span></span>
+              <span>Truck Request</span>
+              <span data-badge="mm" class="badge {{if .PendingMM}}has-items{{end}}">{{.PendingMM}}</span>
+            </a>
+          </div>
+        </section>
+
+        <section data-role-link="dock_officer doc_officer" class="nav-group">
+          <button class="nav-group-button" type="button" aria-expanded="true">
+            <span class="nav-group-main">
+              <span class="nav-icon"><span class="ui-icon icon-box" aria-hidden="true"></span></span>
+              <span>Dock</span>
+            </span>
+            <span class="chevron"><span class="ui-icon icon-chevron-down" aria-hidden="true"></span></span>
+          </button>
+          <div class="nav-group-items">
+            <a href="/dock/officer" class="nav-link nav-child {{if eq .ActiveMenu "dock-officer"}}is-active{{end}}">
+              <span class="nav-icon"><span class="ui-icon icon-clock" aria-hidden="true"></span></span>
+              <span>Dock Officer</span>
+              <span data-badge="dock" class="badge {{if .PendingDock}}has-items{{end}}">{{.PendingDock}}</span>
+            </a>
+          </div>
+        </section>
+
+        <div data-role-link="fte_ops fte_mm" class="nav-divider"></div>
+
+        <section data-role-link="fte_ops fte_mm" class="nav-group">
+          <button class="nav-group-button" type="button" aria-expanded="true">
+            <span class="nav-group-main">
+              <span class="nav-icon"><span class="ui-icon icon-settings" aria-hidden="true"></span></span>
+              <span>Settings</span>
+            </span>
+            <span class="chevron"><span class="ui-icon icon-chevron-down" aria-hidden="true"></span></span>
+          </button>
+          <div class="nav-group-items">
+            <a href="/settings#add-new-role" class="nav-link nav-child {{if eq .ActiveMenu "settings"}}is-active{{end}}">
+              <span class="nav-icon"><span class="ui-icon icon-user-plus" aria-hidden="true"></span></span>
+              <span>Add New Role</span>
+            </a>
+            <a href="/settings#share" class="nav-link nav-child {{if eq .ActiveMenu "settings-share"}}is-active{{end}}">
+              <span class="nav-icon"><span class="ui-icon icon-share" aria-hidden="true"></span></span>
+              <span>Share</span>
+            </a>
+          </div>
+        </section>
+      </nav>
+
+      <div class="sidebar-user">
+        <span class="avatar user-avatar" data-user-initials>T</span>
+        <span>
+          <strong data-user-name>Test Ops PIC</strong>
+          <small data-user-role>Ops PIC</small>
+        </span>
+        <button class="icon-button" type="button" data-logout title="Logout" aria-label="Logout">
+          <span class="ui-icon icon-logout" aria-hidden="true"></span>
+        </button>
+      </div>
+    </aside>
+
+    <main class="main-panel">
+      <header class="topbar">
+        <div class="topbar-title">
+          <button class="icon-button mobile-only" type="button" data-toggle-sidebar title="Toggle sidebar" aria-label="Toggle sidebar">
+            <span class="ui-icon icon-menu" aria-hidden="true"></span>
+          </button>
+          <h1>{{.Title}}</h1>
+        </div>
+
+        <div class="topbar-actions">
+          <label class="topbar-search">
+            <span class="ui-icon icon-search" aria-hidden="true"></span>
+            <input type="search" placeholder="Search" data-global-search>
+          </label>
+          <button class="icon-button" type="button" data-toggle-theme title="Switch to dark mode" aria-label="Switch to dark mode">
+            <span class="ui-icon icon-theme" aria-hidden="true"></span>
+          </button>
+          <button class="notification-button" type="button" data-open-notifications title="Notifications" aria-label="Notifications">
+            <span class="ui-icon icon-bell" aria-hidden="true"></span>
+            <strong data-notification-count>{{add .PendingOps (add .PendingMM .PendingDock)}}</strong>
+          </button>
+          <span class="connection-pill">
+            <span class="ui-icon icon-wifi" aria-hidden="true"></span>
+            Live Connected
+          </span>
+          <div class="topbar-user">
+            <span class="avatar small user-avatar" data-user-initials>T</span>
+            <span>
+              <strong data-user-name>Test Ops PIC</strong>
+              <small data-user-role>Ops PIC</small>
+            </span>
+          </div>
+          <button class="primary-button compact" type="button" data-open-login><span class="ui-icon icon-login" aria-hidden="true"></span><span>Login</span></button>
+        </div>
+      </header>
+
+      <div class="page-content">
+        {{template "content" .}}
+      </div>
+    </main>
+  </div>
+
+  <div class="toast-region" data-toast-region aria-live="polite"></div>
+
+  <div class="modal-backdrop {{if not .ShowLogin}}is-hidden{{end}}" data-login-modal>
+    <section class="login-modal" role="dialog" aria-modal="true" aria-labelledby="login-title">
+      <button class="icon-button modal-close" type="button" data-close-login aria-label="Close login"><span class="ui-icon icon-close" aria-hidden="true"></span></button>
+      <div class="login-heading">
+        <span class="brand-mark"><img src="/static/icons/delivery.png" alt="" aria-hidden="true"></span>
+        <div>
+          <p class="eyebrow">SOC 5 Outbound</p>
+          <h2 id="login-title">Sign in</h2>
+        </div>
+      </div>
+
+      <div class="segmented" role="tablist">
+        <button class="segment is-active" type="button" data-login-tab="fte">FTE</button>
+        <button class="segment" type="button" data-login-tab="backroom">Backroom</button>
+      </div>
+
+      <form class="login-form" data-login-form>
+        <input type="hidden" name="login_type" value="fte" data-login-type>
+        <label data-fte-field>
+          <span>Email</span>
+          <input name="email" type="email" autocomplete="email" placeholder="name@shopee.com">
+        </label>
+        <label data-backroom-field class="is-hidden">
+          <span>Ops ID</span>
+          <input name="ops_id" type="text" autocomplete="username" placeholder="OPS ID">
+        </label>
+        <p class="form-error" data-login-error></p>
+        <button class="primary-button full" type="submit">
+          <span class="ui-icon icon-login" aria-hidden="true"></span>
+          <span data-login-button-text>Continue</span>
+          <span class="button-spinner" aria-hidden="true"></span>
+        </button>
+      </form>
+    </section>
+  </div>
+</body>
+</html>
+{{end}}

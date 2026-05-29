@@ -1,0 +1,83 @@
+
+2026/05/28 12:54:36 [32mC:/Users/spxph4227/Desktop/golang-dashboard/cmd/server/main.go:38 [33mSLOW SQL >= 200ms
+[0m[31;1m[343.733ms] [33m[rows:1][35m SELECT count(*) FROM information_schema.tables WHERE table_schema = CURRENT_SCHEMA() AND table_name = 'clusters' AND table_type = 'BASE TABLE'[0m
+
+2026/05/28 12:54:36 [32mC:/Users/spxph4227/Desktop/golang-dashboard/cmd/server/main.go:38 [33mSLOW SQL >= 200ms
+[0m[31;1m[218.659ms] [33m[rows:-][35m SELECT c.column_name, c.is_nullable = 'YES', c.udt_name, c.character_maximum_length, c.numeric_precision, c.numeric_precision_radix, c.numeric_scale, c.datetime_precision, 8 * typlen, c.column_default, pd.description, c.identity_increment FROM information_schema.columns AS c JOIN pg_type AS pgt ON c.udt_name = pgt.typname LEFT JOIN pg_catalog.pg_description as pd ON pd.objsubid = c.ordinal_position AND pd.objoid = (SELECT oid FROM pg_catalog.pg_class WHERE relname = c.table_name AND relnamespace = (SELECT oid FROM pg_catalog.pg_namespace WHERE nspname = c.table_schema)) where table_catalog = 'postgres' AND table_schema = CURRENT_SCHEMA() AND table_name = 'clusters'[0m
+
+2026/05/28 12:54:37 [32mC:/Users/spxph4227/Desktop/golang-dashboard/cmd/server/main.go:38 [33mSLOW SQL >= 200ms
+[0m[31;1m[230.088ms] [33m[rows:-][35m SELECT constraint_name FROM information_schema.table_constraints tc JOIN information_schema.constraint_column_usage AS ccu USING (constraint_schema, constraint_catalog, table_name, constraint_name) JOIN information_schema.columns AS c ON c.table_schema = tc.constraint_schema AND tc.table_name = c.table_name AND ccu.column_name = c.column_name WHERE constraint_type IN ('PRIMARY KEY', 'UNIQUE') AND c.table_catalog = 'postgres' AND c.table_schema = CURRENT_SCHEMA() AND c.table_name = 'clusters' AND constraint_type = 'UNIQUE'[0m
+
+2026/05/28 12:54:37 [32mC:/Users/spxph4227/Desktop/golang-dashboard/cmd/server/main.go:38 [33mSLOW SQL >= 200ms
+[0m[31;1m[253.034ms] [33m[rows:-][35m SELECT c.column_name, constraint_name, constraint_type FROM information_schema.table_constraints tc JOIN information_schema.constraint_column_usage AS ccu USING (constraint_schema, constraint_catalog, table_name, constraint_name) JOIN information_schema.columns AS c ON c.table_schema = tc.constraint_schema AND tc.table_name = c.table_name AND ccu.column_name = c.column_name WHERE constraint_type IN ('PRIMARY KEY', 'UNIQUE') AND c.table_catalog = 'postgres' AND c.table_schema = CURRENT_SCHEMA() AND c.table_name = 'clusters'[0m
+
+2026/05/28 12:54:37 [32mC:/Users/spxph4227/Desktop/golang-dashboard/cmd/server/main.go:38 [33mSLOW SQL >= 200ms
+[0m[31;1m[261.103ms] [33m[rows:-][35m SELECT a.attname as column_name, format_type(a.atttypid, a.atttypmod) AS data_type
+		FROM pg_attribute a JOIN pg_class b ON a.attrelid = b.oid AND relnamespace = (SELECT oid FROM pg_catalog.pg_namespace WHERE nspname = CURRENT_SCHEMA())
+		WHERE a.attnum > 0 -- hide internal columns
+		AND NOT a.attisdropped -- hide deleted columns
+		AND b.relname = 'clusters'[0m
+
+2026/05/28 12:54:38 [32mC:/Users/spxph4227/Desktop/golang-dashboard/cmd/server/main.go:38 [33mSLOW SQL >= 200ms
+[0m[31;1m[252.555ms] [33m[rows:0][35m SELECT description FROM pg_catalog.pg_description WHERE objsubid = (SELECT ordinal_position FROM information_schema.columns WHERE table_schema = CURRENT_SCHEMA() AND table_name = 'clusters' AND column_name = 'id') AND objoid = (SELECT oid FROM pg_catalog.pg_class WHERE relname = 'clusters' AND relnamespace = (SELECT oid FROM pg_catalog.pg_namespace WHERE nspname = CURRENT_SCHEMA()))[0m
+
+2026/05/28 12:54:39 [32mC:/Users/spxph4227/Desktop/golang-dashboard/cmd/server/main.go:38 [33mSLOW SQL >= 200ms
+[0m[31;1m[622.011ms] [33m[rows:0][35m SELECT description FROM pg_catalog.pg_description WHERE objsubid = (SELECT ordinal_position FROM information_schema.columns WHERE table_schema = CURRENT_SCHEMA() AND table_name = 'clusters' AND column_name = 'backlogs') AND objoid = (SELECT oid FROM pg_catalog.pg_class WHERE relname = 'clusters' AND relnamespace = (SELECT oid FROM pg_catalog.pg_namespace WHERE nspname = CURRENT_SCHEMA()))[0m
+
+2026/05/28 12:54:39 [32mC:/Users/spxph4227/Desktop/golang-dashboard/cmd/server/main.go:38 [33mSLOW SQL >= 200ms
+[0m[31;1m[295.869ms] [33m[rows:1][35m SELECT count(*) FROM pg_indexes WHERE tablename = 'clusters' AND indexname = 'idx_clusters_region' AND schemaname = CURRENT_SCHEMA()[0m
+
+   ____    __
+  / __/___/ /  ___
+ / _// __/ _ \/ _ \
+/___/\__/_//_/\___/ v4.15.2
+High performance, minimalist Go web framework
+https://echo.labstack.com
+____________________________________O/_______
+                                    O\
+⇨ http server started on [::]:8080
+
+2026/05/28 12:54:48 [32mC:/Users/spxph4227/Desktop/golang-dashboard/internal/handlers/dashboard.go:706 [33mSLOW SQL >= 200ms
+[0m[31;1m[479.006ms] [33m[rows:1][35m SELECT * FROM "requests" WHERE status = 'FOR_DOCKING' ORDER BY request_timestamp desc LIMIT 250[0m
+
+2026/05/28 12:54:48 [32mC:/Users/spxph4227/Desktop/golang-dashboard/internal/handlers/dashboard.go:645 [33mSLOW SQL >= 200ms
+[0m[31;1m[213.367ms] [33m[rows:1][35m SELECT count(*) FROM "requests" WHERE status IN ('PENDING_OPS','REJECTED') OR status = ''[0m
+
+2026/05/28 12:54:49 [32mC:/Users/spxph4227/Desktop/golang-dashboard/internal/handlers/dashboard.go:649 [33mSLOW SQL >= 200ms
+[0m[31;1m[343.221ms] [33m[rows:1][35m SELECT count(*) FROM "requests" WHERE status = 'PENDING_MM'[0m
+
+2026/05/28 12:54:57 [32mC:/Users/spxph4227/Desktop/golang-dashboard/internal/handlers/dashboard.go:628 [33mSLOW SQL >= 200ms
+[0m[31;1m[297.025ms] [33m[rows:1][35m SELECT count(*) FROM "requests" WHERE request_timestamp >= '2026-05-28 08:00:00'[0m
+
+2026/05/28 12:54:58 [32mC:/Users/spxph4227/Desktop/golang-dashboard/internal/handlers/dashboard.go:633 [33mSLOW SQL >= 200ms
+[0m[31;1m[201.884ms] [33m[rows:1][35m SELECT count(*) FROM "requests" WHERE status IN ('REJECTED','CANCELED')[0m
+
+2026/05/28 12:55:19 [32mC:/Users/spxph4227/Desktop/golang-dashboard/internal/handlers/dashboard.go:628 [33mSLOW SQL >= 200ms
+[0m[31;1m[204.215ms] [33m[rows:1][35m SELECT count(*) FROM "requests" WHERE request_timestamp >= '2026-05-28 08:00:00'[0m
+
+2026/05/28 12:55:20 [32mC:/Users/spxph4227/Desktop/golang-dashboard/internal/handlers/dashboard.go:659 [33mSLOW SQL >= 200ms
+[0m[31;1m[202.636ms] [33m[rows:1][35m SELECT * FROM "requests" ORDER BY updated_at desc, request_timestamp desc LIMIT 6[0m
+
+2026/05/28 12:55:26 [32mC:/Users/spxph4227/Desktop/golang-dashboard/internal/handlers/dashboard.go:628 [33mSLOW SQL >= 200ms
+[0m[31;1m[216.140ms] [33m[rows:1][35m SELECT count(*) FROM "requests" WHERE request_timestamp >= '2026-05-28 08:00:00'[0m
+
+2026/05/28 12:55:31 [32mC:/Users/spxph4227/Desktop/golang-dashboard/internal/handlers/dashboard.go:628 [33mSLOW SQL >= 200ms
+[0m[31;1m[216.527ms] [33m[rows:1][35m SELECT count(*) FROM "requests" WHERE request_timestamp >= '2026-05-28 08:00:00'[0m
+
+2026/05/28 12:55:36 [32mC:/Users/spxph4227/Desktop/golang-dashboard/internal/handlers/dashboard.go:628 [33mSLOW SQL >= 200ms
+[0m[31;1m[215.811ms] [33m[rows:1][35m SELECT count(*) FROM "requests" WHERE request_timestamp >= '2026-05-28 08:00:00'[0m
+
+2026/05/28 12:55:41 [32mC:/Users/spxph4227/Desktop/golang-dashboard/internal/handlers/dashboard.go:628 [33mSLOW SQL >= 200ms
+[0m[31;1m[237.420ms] [33m[rows:1][35m SELECT count(*) FROM "requests" WHERE request_timestamp >= '2026-05-28 08:00:00'[0m
+
+2026/05/28 12:55:51 [32mC:/Users/spxph4227/Desktop/golang-dashboard/internal/handlers/dashboard.go:628 [33mSLOW SQL >= 200ms
+[0m[31;1m[229.206ms] [33m[rows:1][35m SELECT count(*) FROM "requests" WHERE request_timestamp >= '2026-05-28 08:00:00'[0m
+
+2026/05/28 12:55:56 [32mC:/Users/spxph4227/Desktop/golang-dashboard/internal/handlers/dashboard.go:628 [33mSLOW SQL >= 200ms
+[0m[31;1m[242.667ms] [33m[rows:1][35m SELECT count(*) FROM "requests" WHERE request_timestamp >= '2026-05-28 08:00:00'[0m
+
+2026/05/28 12:56:11 [32mC:/Users/spxph4227/Desktop/golang-dashboard/internal/handlers/dashboard.go:628 [33mSLOW SQL >= 200ms
+[0m[31;1m[210.500ms] [33m[rows:1][35m SELECT count(*) FROM "requests" WHERE request_timestamp >= '2026-05-28 08:00:00'[0m
+
+2026/05/28 12:56:21 [32mC:/Users/spxph4227/Desktop/golang-dashboard/internal/handlers/dashboard.go:628 [33mSLOW SQL >= 200ms
+[0m[31;1m[204.860ms] [33m[rows:1][35m SELECT count(*) FROM "requests" WHERE request_timestamp >= '2026-05-28 08:00:00'[0m

@@ -1,0 +1,67 @@
+{{define "settings.html"}}
+{{template "layout" .}}
+{{end}}
+
+{{define "content"}}
+<section class="settings-page" data-settings-page>
+  <section data-role-link="fte_ops fte_mm" class="panel settings-panel" id="add-new-role">
+    <div class="panel-heading">
+      <div>
+        <p class="eyebrow">Settings</p>
+        <h2>Add New Role</h2>
+      </div>
+    </div>
+
+    <form class="form-grid settings-form" data-add-role-form>
+      <input type="hidden" name="actor_role" data-actor-role>
+      <label>
+        <span>Name</span>
+        <input name="name" required autocomplete="name" placeholder="Full name">
+      </label>
+      <label>
+        <span>Role</span>
+        <select name="role" required data-role-select>
+          <option value="">Select role</option>
+          <option value="fte_ops">FTE Ops</option>
+          <option value="fte_mm">FTE MM</option>
+          <option value="ops_pic">Ops PIC</option>
+          <option value="dock_officer">Dock Officer</option>
+          <option value="data_team">Data Team</option>
+          <option value="admin">Admin</option>
+        </select>
+      </label>
+      <label data-email-field class="is-hidden">
+        <span>Email</span>
+        <input name="email" type="email" autocomplete="email" placeholder="name@shopee.com">
+      </label>
+      <label data-ops-id-field class="is-hidden">
+        <span>Ops ID</span>
+        <input name="ops_id" autocomplete="username" placeholder="Backroom Ops ID">
+      </label>
+      <p class="form-error" data-add-role-error></p>
+      <div class="form-actions">
+        <button class="ghost-button" type="reset"><span class="ui-icon icon-clear" aria-hidden="true"></span><span>Clear</span></button>
+        <button class="primary-button" type="submit">
+          <span class="ui-icon icon-user-plus" aria-hidden="true"></span>
+          <span data-add-role-submit>Add Role</span>
+          <span class="button-spinner" aria-hidden="true"></span>
+        </button>
+      </div>
+    </form>
+  </section>
+
+  <section data-role-link="fte_ops fte_mm" class="panel settings-panel" id="share">
+    <div class="panel-heading">
+      <div>
+        <p class="eyebrow">Settings</p>
+        <h2>Share</h2>
+      </div>
+      <button class="ghost-button compact" type="button" data-copy-share-link><span class="ui-icon icon-link" aria-hidden="true"></span><span>Copy Link</span></button>
+    </div>
+    <div class="share-box">
+      <span class="ui-icon icon-share" aria-hidden="true"></span>
+      <input readonly value="/settings" data-share-link aria-label="Settings share link">
+    </div>
+  </section>
+</section>
+{{end}}

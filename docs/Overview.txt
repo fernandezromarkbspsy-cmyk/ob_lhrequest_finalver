@@ -1,0 +1,206 @@
+Overview
+A modern, sleek web application to manage Linehaul truck requests for Shopee Sorting Facility Dispatch department, replacing the current dual Google Sheets workflow with a streamlined approval system featuring sidebar navigation and real-time notifications.
+User Authentication (Sheet-based)
+Login Flow
+
+App opens → Animated login popup modal appears login form
+Role selection:
+
+FTE (for FTE Ops / FTE MM users)
+Backroom (for Ops PIC users)
+
+
+User stored in database
+
+User Identification Logic
+ConditionRole IdentifiedOps id is NULL AND email is NOT NULLFTE (FTE Ops or FTE MM)Ops id is NOT NULL AND email is NULLOps PIC (Backroom)
+Login Modal Features
+
+Smooth fade-in animation after 5-second delay
+Glassmorphism/blur backdrop effect
+Two login tabs: FTE and Backroom
+FTE Login: Email input → validates against user sheet
+Backroom Login: Ops ID input → validates against user sheet
+Error shake animation for invalid credentials
+Success animation before redirect
+
+
+User Roles
+
+Ops PIC (Backroom) - Creates linehaul requests
+FTE Ops (FTE) - Approves/Rejects/Edits requests (with sound alert)
+FTE MM (FTE) - Confirms with Plate # or Rejects with Remarks (with sound alert)
+
+Data Flow
+Ops PIC (Create) → FTE Ops (Approve/Reject/Edit) → FTE MM (Confirm Plate # / Reject with Remarks)
+
+
+UI Design Direction
+Theme: Modern Dark Logistics Dashboard
+Inspired by professional dark-themed dashboards with:
+
+Dark background (#0a0a0a / near-black)
+Accent colors: Orange (#f97316) for primary actions, subtle blues/greens for status
+Clean sidebar navigation with collapsible menu groups
+Card-based layouts with subtle borders and shadows
+Data tables with hover states, search, and filters
+Notification badges with pulse animations
+
+Color Palette
+
+Background: #0a0a0a (primary), #171717 (cards/sidebar)
+Text: #fafafa (primary), #a1a1aa (muted)
+Accent: #f97316 (orange - primary actions)
+Status colors:
+
+Pending: #fbbf24 (amber)
+Approved/Confirmed: #22c55e (green)
+Rejected: #ef4444 (red)
+In Progress: #3b82f6 (blue)
+
+
+
+Animation & Effects
+
+Modal entrance: Fade + scale up (0.95 → 1)
+Backdrop: Blur effect with dark overlay
+Button hover: Subtle glow/scale
+Error states: Shake animation
+Loading: Spinner with pulse
+
+
+Navigation Structure (Sidebar)
+[Logo: SOC 5 outbound]
+
+Dashboard
+  └── Overview (stats, recent activity)
+
+Outbound
+  └── LH Request (create & view requests - Ops PIC & FTE Ops)
+
+Midmile
+  └── Truck Request (FTE MM confirmation queue)
+
+[User info & Logout at bottom]
+
+Role-based visibility:
+
+Ops PIC (Backroom): Dashboard, Outbound > LH Request
+FTE Ops: Dashboard, Outbound > LH Request (with approval actions)
+FTE MM: Dashboard, Midmile > Truck Request
+
+
+Technical Architecture
+Stack
+
+Frontend: (suggestion for Golang)
+Backend: (suggestion for Golang)
+Database: Postgres, such as Supabase Postgres
+Real-time: Server-sent events for workflow updates, with polling fallback
+Notifications: Browser Audio API for sound alerts + visual badge counter
+
+Google Sheets Integration for request storage
+
+Sheet ID: 1Tawt4iSUrSFcRAgCTVg_b-rWRIRByQx_nP-qpS2Yjdc
+Tabs:
+
+cluster - for Hub/Cluster dropdown (unique values), Region lookup
+user - User accounts with Ops ID and Email columns
+requests - Main data storage for all linehaul requests
+
+
+
+Environment Variables Required
+GOOGLE_SERVICE_ACCOUNT_EMAIL=xxx
+GOOGLE_PRIVATE_KEY=xxx
+GOOGLE_SHEET_ID=1Tawt4iSUrSFcRAgCTVg_b-rWRIRByQx_nP-qpS2Yjdc
+
+
+Pages & Components
+1. Landing Page with Login Modal (/)
+
+Modern dark dashboard preview loads immediately
+Two tabs: FTE (email login) / Backroom (Ops ID login)
+Stores user info in localStorage/sessionStorage
+Routes to dashboard on success
+
+2. Dashboard (/dashboard)
+
+Stats Cards: Total requests today, pending approvals, confirmed trucks
+Recent Activity Feed: Latest status changes
+Quick Actions: New request button (for Ops PIC)
+
+3. LH Request Page (/outbound/lh-request)
+
+For Ops PIC:
+
+New Request Form (modal or inline)
+My Requests Table
+
+
+For FTE Ops:
+
+Pending Approval Queue (with sound notification)
+Actions: Approve / Reject / Edit
+All Requests Table with filters
+
+
+
+4. Truck Request Page (/midmile/truck-request)
+
+For FTE MM:
+
+Pending Confirmation Queue (with sound notification)
+Actions: Confirm with Plate # / Reject with Remarks
+All Requests Table with filters
+
+
+
+5. Table Features (All Pages)
+
+Search Box: Search by Plate #
+Date Filter: Filter by date range
+Status Filter: Filter by status
+Export: CSV download
+Pagination: Handle large datasets
+Sortable columns
+
+
+Sound Notifications
+Implementation
+
+FTE Ops: Alert sound when new PENDING_OPS request arrives
+FTE MM: Alert sound when new PENDING_MM request arrives
+Use Web Audio API with a professional notification chime
+Visual badge counter in sidebar + header
+Polling every 5 seconds to check for new items
+
+User Experience
+
+Sound plays once per new item
+Badge shows count of pending items
+Clicking notification clears that item's alert
+
+Implementation Order
+
+Layout & Navigation
+
+Build sidebar component with collapsible groups
+Build header with notification bell
+Create dashboard layout wrapper
+Add role-based menu visibility
+
+Phase 5: Actions & Dialogs
+
+Implement approval/rejection flow
+Build Plate # confirmation dialog
+Build edit request dialog
+Add sound notifications for FTE Ops & FTE MM
+
+Phase 6: Polish
+
+Add search by Plate #
+Add date filters
+Add CSV export
+Test full workflow end-to-end
+

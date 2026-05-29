@@ -1,0 +1,44 @@
+tables:
+
+Cluster:
+- cluster_name
+- hub_name
+- region
+- dock_number
+- backlogs
+- backlogs_ts
+- active
+- created at
+
+User:
+- name
+- role(fte_ops, fte_mm, ops_pic, dock_officer, doc_officer, data_team, admin)
+- ops_id (is null)
+- email (is null)
+- is_fte
+- is_active
+- created_at
+
+Request Table:
+- request_timestamp
+- cluster
+- region
+- dock_no
+- backlogs
+- baclogs_ts
+- ob_fte
+- ob_ops_pic
+- midmile_fte
+- truck_size
+- truck_type
+- plate_number
+- provide_time
+- linehaul_trip_no
+- docked_time
+- status (PENDING_OPS, PENDING_MM, ASSIGNED, FOR_DOCKING, DOCKED, CONFIRMED, CANCELED, REJECTED)
+- rejection_remarks
+- approved_at
+- rejected_at
+- confirmed_at
+- created_at
+- updated_at

@@ -1,0 +1,142 @@
+{{define "dashboard.html"}}
+{{template "layout" .}}
+{{end}}
+
+{{define "content"}}
+<section class="panel command-view">
+  <div class="command-copy">
+    <p class="eyebrow">Live Operations</p>
+    <h2>Linehaul Command View</h2>
+    <p>Monitor request volume, handoffs, docking readiness, and exceptions from one working view.</p>
+  </div>
+  <div class="command-metrics">
+    <div>
+      <span>Today</span>
+      <strong data-stat-total-today>{{.Stats.TotalToday}}</strong>
+      <small>Requests created</small>
+    </div>
+    <div>
+      <span>Active Flow</span>
+      <strong data-stat-confirmed-trucks>{{.Stats.ConfirmedTrucks}}</strong>
+      <small>Assigned, docking, or docked</small>
+    </div>
+    <div>
+      <span>Open Alerts</span>
+      <strong data-stat-open-alerts>{{add .Stats.PendingOps (add .Stats.PendingMM .Stats.ForDocking)}}</strong>
+      <small>Needs team action</small>
+    </div>
+  </div>
+</section>
+
+<section class="dashboard-grid">
+  <article class="panel chart-panel">
+    <div class="panel-heading">
+      <div>
+        <h2>Request Trend</h2>
+        <p><span data-trend-period>6 PM - 6 AM</span> <span class="legend-dot orange"></span> Created requests</p>
+      </div>
+    </div>
+    <div class="line-chart" aria-label="Request trend chart" data-request-trend>
+      <div class="chart-scale" data-trend-scale>
+        <span>4</span>
+        <span>3</span>
+        <span>2</span>
+        <span>1</span>
+        <span>0</span>
+      </div>
+      <div class="chart-plot" data-trend-plot>
+        <span class="grid-line"></span>
+        <span class="grid-line"></span>
+        <span class="grid-line"></span>
+        <span class="grid-line"></span>
+        <div class="trend-bars" data-trend-bars></div>
+        <svg class="trend-svg" data-trend-svg viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true"></svg>
+        <div class="chart-times" data-trend-labels></div>
+      </div>
+    </div>
+  </article>
+
+  <aside class="panel priority-panel">
+    <div class="panel-heading">
+      <div>
+        <h2>Priority Work</h2>
+        <p>Queues that need action now</p>
+      </div>
+    </div>
+    <div class="priority-list">
+      <a class="priority-row urgent" href="/outbound/lh-request">
+        <span class="priority-icon"><span class="ui-icon icon-clock" aria-hidden="true"></span></span>
+        <span><strong>Ops Approval</strong><small>Pending or returned linehaul requests</small></span>
+        <b data-stat-pending-ops>{{.Stats.PendingOps}}</b>
+      </a>
+      <a class="priority-row" href="/midmile/truck-request">
+        <span class="priority-icon"><span class="ui-icon icon-user-plus" aria-hidden="true"></span></span>
+        <span><strong>Midmile Handoff</strong><small>Approved requests awaiting truck action</small></span>
+        <b data-stat-pending-mm>{{.Stats.PendingMM}}</b>
+      </a>
+      <a class="priority-row ready" href="/dock/officer">
+        <span class="priority-icon"><span class="ui-icon icon-truck" aria-hidden="true"></span></span>
+        <span><strong>Docking Queue</strong><small>Trucks ready for docking details</small></span>
+        <b data-stat-for-docking>{{.Stats.ForDocking}}</b>
+      </a>
+      <a class="priority-row exception" href="/outbound/lh-request">
+        <span class="priority-icon"><span class="ui-icon icon-xcircle" aria-hidden="true"></span></span>
+        <span><strong>Exceptions</strong><small>Rejected or canceled requests</small></span>
+        <b data-stat-rejected>{{.Stats.Rejected}}</b>
+      </a>
+    </div>
+  </aside>
+</section>
+
+<section class="dashboard-lower-grid">
+  <article class="panel flow-panel">
+    <div class="panel-heading">
+      <div>
+        <h2>Fleet Flow</h2>
+        <p>Current movement through the linehaul process</p>
+      </div>
+    </div>
+    <div class="flow-steps">
+      <div class="flow-step">
+        <span><i class="status-dot PENDING_MM"></i>Midmile</span>
+        <strong data-stat-pending-mm>{{.Stats.PendingMM}}</strong>
+      </div>
+      <div class="flow-step">
+        <span><i class="status-dot FOR_DOCKING"></i>For Docking</span>
+        <strong data-stat-for-docking>{{.Stats.ForDocking}}</strong>
+      </div>
+      <div class="flow-step">
+        <span><i class="status-dot DOCKED"></i>Active Trucks</span>
+        <strong data-stat-confirmed-trucks>{{.Stats.ConfirmedTrucks}}</strong>
+      </div>
+    </div>
+  </article>
+
+  <section class="panel activity-panel">
+    <div class="panel-heading">
+      <div>
+        <h2>Recent Activity</h2>
+        <p>Latest linehaul workflow updates</p>
+      </div>
+      <button class="ghost-button compact" type="button" data-refresh-activity><span class="ui-icon icon-refresh" aria-hidden="true"></span><span>Refresh</span></button>
+    </div>
+
+    <div class="activity-list" data-activity-list>
+      {{if .RecentRows}}
+        {{range .RecentRows}}
+        <div class="activity-item">
+          <span class="status-dot {{.Status}}"></span>
+          <div>
+            <strong>{{.Cluster}}</strong>
+            <small>{{.RequestTimestamp}} - {{.StatusLabel}}</small>
+          </div>
+          <span class="plate-text">{{if .PlateNumber}}{{.PlateNumber}}{{else}}No plate{{end}}</span>
+        </div>
+        {{end}}
+      {{else}}
+        <div class="empty-state">No recent request activity.</div>
+      {{end}}
+    </div>
+  </section>
+</section>
+{{end}}
