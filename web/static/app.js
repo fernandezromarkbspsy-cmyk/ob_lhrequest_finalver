@@ -1,7 +1,6 @@
 (function () {
   const storageKey = "soc5_user";
   const themeKey = "soc5_theme";
-  const user = readUser();
   let notificationAudioContext = null;
   let notificationAudioReady = false;
   let pendingNotificationChimes = 0;
@@ -164,15 +163,19 @@
       return;
     }
 
-    if (user) {
-      modal.classList.add("is-hidden");
-    }
+    enforceLoginModal();
 
     document.querySelectorAll("[data-open-login]").forEach((button) => {
       button.addEventListener("click", () => openModal(modal));
     });
     document.querySelectorAll("[data-close-login]").forEach((button) => {
-      button.addEventListener("click", () => closeModal(modal));
+      button.addEventListener("click", () => {
+        if (readUser()) {
+          closeModal(modal);
+        } else {
+          enforceLoginModal();
+        }
+      });
     });
 
     document.querySelectorAll("[data-login-tab]").forEach((button) => {
@@ -202,6 +205,7 @@
         toast("Signed in as " + body.name);
         form.classList.remove("shake");
         form.classList.add("success");
+        enforceLoginModal();
         window.setTimeout(() => {
           location.href = body.redirect || "/dashboard";
         }, 420);
@@ -213,6 +217,24 @@
       } finally {
         form.classList.remove("is-loading");
       }
+    });
+  }
+
+  function enforceLoginModal() {
+    const modal = document.querySelector("[data-login-modal]");
+    if (!modal) {
+      return;
+    }
+
+    const currentUser = readUser();
+    modal.classList.toggle("is-auth-required", !currentUser);
+    modal.classList.toggle("is-hidden", Boolean(currentUser));
+    document.body.classList.toggle("login-locked", !currentUser);
+
+    document.querySelectorAll("[data-close-login]").forEach((button) => {
+      button.hidden = !currentUser;
+      button.setAttribute("aria-hidden", String(!currentUser));
+      button.tabIndex = currentUser ? 0 : -1;
     });
   }
 
