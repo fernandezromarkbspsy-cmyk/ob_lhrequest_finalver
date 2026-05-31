@@ -16,6 +16,7 @@ func EventsAPI(c echo.Context) error {
 	response.Header().Set(echo.HeaderContentType, "text/event-stream")
 	response.Header().Set(echo.HeaderCacheControl, "no-cache")
 	response.Header().Set(echo.HeaderConnection, "keep-alive")
+	response.Header().Set("X-Accel-Buffering", "no")
 	response.WriteHeader(http.StatusOK)
 
 	flusher, ok := response.Writer.(http.Flusher)
@@ -23,22 +24,33 @@ func EventsAPI(c echo.Context) error {
 		return echo.NewHTTPError(http.StatusInternalServerError, "Streaming is not supported")
 	}
 
-	stream, unsubscribe := events.DefaultBus.Subscribe(16)
+	lastID := c.Request().Header.Get("Last-Event-ID")
+
+	stream, unsubscribe := events.DefaultBus.Subscribe(32)
 	defer unsubscribe()
+
+	if err := writeSSE(response, flusher, "system.connected", map[string]string{"status": "connected"}, ""); err != nil {
+		return err
+	}
+
+	for _, ev := range events.DefaultBus.EventsSince(lastID) {
+		if err := writeSSE(response, flusher, ev.Type, ev, ev.ID); err != nil {
+			return err
+		}
+	}
 
 	heartbeat := time.NewTicker(25 * time.Second)
 	defer heartbeat.Stop()
-
-	if err := writeSSE(response, flusher, "system.connected", map[string]string{"status": "connected"}); err != nil {
-		return err
-	}
 
 	for {
 		select {
 		case <-c.Request().Context().Done():
 			return nil
-		case event := <-stream:
-			if err := writeSSE(response, flusher, event.Type, event); err != nil {
+		case event, ok := <-stream:
+			if !ok {
+				return nil
+			}
+			if err := writeSSE(response, flusher, event.Type, event, event.ID); err != nil {
 				return err
 			}
 		case <-heartbeat.C:
@@ -50,12 +62,17 @@ func EventsAPI(c echo.Context) error {
 	}
 }
 
-func writeSSE(response *echo.Response, flusher http.Flusher, eventName string, payload interface{}) error {
+func writeSSE(response *echo.Response, flusher http.Flusher, eventName string, payload interface{}, id string) error {
 	data, err := json.Marshal(payload)
 	if err != nil {
 		return err
 	}
-	if _, err := fmt.Fprintf(response, "event: %s\ndata: %s\n\n", eventName, data); err != nil {
+	msg := ""
+	if id != "" {
+		msg += fmt.Sprintf("id: %s\n", id)
+	}
+	msg += fmt.Sprintf("event: %s\ndata: %s\n\n", eventName, data)
+	if _, err := fmt.Fprint(response, msg); err != nil {
 		return err
 	}
 	flusher.Flush()

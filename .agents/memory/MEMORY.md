@@ -1,0 +1,1 @@
+- [Security and Performance Fixes](security-and-perf-fixes.md) — Auth (JWT cookie), stats query collapse, timezone (Manila), TOCTOU fix, SSE replay, graceful shutdown.

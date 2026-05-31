@@ -99,7 +99,8 @@
     });
 
     document.querySelectorAll("[data-logout]").forEach((button) => {
-      button.addEventListener("click", () => {
+      button.addEventListener("click", async () => {
+        await fetch("/api/logout", { method: "POST" }).catch(() => {});
         localStorage.removeItem(storageKey);
         location.href = "/";
       });
@@ -268,7 +269,7 @@
           const requestID = requestForm.querySelector("[data-request-id]");
           const id = requestID ? requestID.value : "";
           const url = id ? `/api/requests/${id}/edit` : "/api/requests";
-          const response = await fetch(url, jsonOptions(formToObject(requestForm)));
+          const response = await apiFetch(url, jsonOptions(formToObject(requestForm)));
           const body = await response.json().catch(() => ({}));
           if (!response.ok) {
             throw new Error(body.message || (id ? "Unable to update request" : "Unable to create request"));
@@ -387,7 +388,7 @@
         setAddRoleError("");
 
         try {
-          const response = await fetch("/api/users", jsonOptions(formToObject(form)));
+          const response = await apiFetch("/api/users", jsonOptions(formToObject(form)));
           const body = await response.json().catch(() => ({}));
           if (!response.ok) {
             throw new Error(body.message || "Unable to add role");
@@ -441,7 +442,7 @@
       const id = form.querySelector("[data-action-id]").value;
       const action = form.querySelector("[data-action-type]").value;
       try {
-        const response = await fetch(`/api/requests/${id}/${action}`, jsonOptions(formToObject(form)));
+        const response = await apiFetch(`/api/requests/${id}/${action}`, jsonOptions(formToObject(form)));
         const body = await response.json().catch(() => ({}));
         if (!response.ok) {
           throw new Error(body.message || "Unable to update request");
@@ -474,7 +475,7 @@
     addParam(params, "date_from", valueOf("[data-filter-from]"));
     addParam(params, "date_to", valueOf("[data-filter-to]"));
 
-    const response = await fetch("/api/requests?" + params.toString());
+    const response = await apiFetch("/api/requests?" + params.toString());
     const body = await response.json().catch(() => ({ requests: [] }));
     state.rows = Array.isArray(body.requests) ? body.requests : [];
     renderTable();
@@ -704,7 +705,7 @@
       return;
     }
 
-    const response = await fetch("/api/request-trend");
+    const response = await apiFetch("/api/request-trend");
     const body = await response.json().catch(() => ({ points: [] }));
     const points = Array.isArray(body.points) ? body.points : [];
     renderRequestTrend(points, body.period_label || "6 PM - 6 AM");
@@ -771,7 +772,7 @@
     const search = searchTerm ?? valueOf("[data-global-search]");
     addParam(params, "search", search);
     const query = params.toString();
-    const response = await fetch("/api/requests" + (query ? "?" + query : ""));
+    const response = await apiFetch("/api/requests" + (query ? "?" + query : ""));
     const body = await response.json().catch(() => ({ requests: [] }));
     const rows = (body.requests || []).slice(0, 8);
     if (rows.length === 0) {
@@ -859,7 +860,7 @@
 
   async function updateStats() {
     try {
-      const response = await fetch("/api/stats");
+      const response = await apiFetch("/api/stats");
       const stats = await response.json();
       const ops = Number(stats.pending_ops || 0);
       const mm = Number(stats.pending_mm || 0);
@@ -951,7 +952,7 @@
     if (!select) {
       return;
     }
-    const response = await fetch("/api/clusters");
+    const response = await apiFetch("/api/clusters");
     const clusters = await response.json().catch(() => []);
     state.clusters = Array.isArray(clusters) ? clusters : [];
     select.innerHTML = `<option value="">Select cluster</option>` + state.clusters.map((item, index) => (
@@ -1136,6 +1137,17 @@
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload),
     };
+  }
+
+  async function apiFetch(url, options) {
+    const response = await fetch(url, options);
+    if (response.status === 401) {
+      localStorage.removeItem(storageKey);
+      applyRoleVisibility();
+      enforceLoginModal();
+      throw new Error("Session expired. Please sign in again.");
+    }
+    return response;
   }
 
   function setLoginError(message) {

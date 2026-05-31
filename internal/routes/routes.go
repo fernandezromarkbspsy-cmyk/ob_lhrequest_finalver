@@ -1,12 +1,26 @@
 package routes
 
 import (
+	"net/http"
+	"time"
+
+	appauth "golang-dashboard/internal/auth"
 	"golang-dashboard/internal/handlers"
+	appmw "golang-dashboard/internal/middleware"
 
 	"github.com/labstack/echo/v4"
 )
 
 func RegisterRoutes(e *echo.Echo) {
+	loginLimiter := appmw.NewIPRateLimiter(10, time.Minute)
+
+	e.GET("/health", func(c echo.Context) error {
+		return c.JSON(http.StatusOK, map[string]string{"status": "ok"})
+	})
+
+	e.POST("/api/login", handlers.LoginAPI, loginLimiter)
+	e.POST("/api/logout", handlers.LogoutAPI)
+
 	e.GET("/", handlers.Dashboard)
 	e.GET("/dashboard", handlers.Dashboard)
 	e.GET("/outbound/lh-request", handlers.LHRequests)
@@ -15,21 +29,21 @@ func RegisterRoutes(e *echo.Echo) {
 	e.GET("/dock/officer", handlers.DockOfficer)
 	e.GET("/settings", handlers.Settings)
 
-	e.POST("/api/login", handlers.LoginAPI)
-	e.GET("/api/stats", handlers.StatsAPI)
-	e.GET("/api/events", handlers.EventsAPI)
-	e.GET("/api/request-trend", handlers.RequestTrendAPI)
-	e.GET("/api/requests", handlers.RequestsAPI)
-	e.POST("/api/requests", handlers.CreateRequestAPI)
-	e.POST("/api/requests/:id/edit", handlers.EditRequestAPI)
-	e.POST("/api/requests/:id/cancel", handlers.CancelRequestAPI)
-	e.POST("/api/requests/:id/approve", handlers.ApproveRequestAPI)
-	e.POST("/api/requests/:id/reject", handlers.RejectRequestAPI)
-	e.POST("/api/requests/:id/assign", handlers.AssignRequestAPI)
-	e.POST("/api/requests/:id/for-docking", handlers.ForDockingRequestAPI)
-	e.POST("/api/requests/:id/dock", handlers.DockRequestAPI)
-	e.POST("/api/requests/:id/confirm", handlers.ConfirmRequestAPI)
-	e.GET("/api/clusters", handlers.ClustersAPI)
-	e.GET("/api/qr", handlers.DriverQRAPI)
-	e.POST("/api/users", handlers.CreateUserAPI)
+	api := e.Group("/api", appauth.RequireAuth())
+	api.GET("/stats", handlers.StatsAPI)
+	api.GET("/events", handlers.EventsAPI)
+	api.GET("/request-trend", handlers.RequestTrendAPI)
+	api.GET("/requests", handlers.RequestsAPI)
+	api.POST("/requests", handlers.CreateRequestAPI)
+	api.POST("/requests/:id/edit", handlers.EditRequestAPI)
+	api.POST("/requests/:id/cancel", handlers.CancelRequestAPI)
+	api.POST("/requests/:id/approve", handlers.ApproveRequestAPI)
+	api.POST("/requests/:id/reject", handlers.RejectRequestAPI)
+	api.POST("/requests/:id/assign", handlers.AssignRequestAPI)
+	api.POST("/requests/:id/for-docking", handlers.ForDockingRequestAPI)
+	api.POST("/requests/:id/dock", handlers.DockRequestAPI)
+	api.POST("/requests/:id/confirm", handlers.ConfirmRequestAPI)
+	api.GET("/clusters", handlers.ClustersAPI)
+	api.GET("/qr", handlers.DriverQRAPI)
+	api.POST("/users", handlers.CreateUserAPI)
 }

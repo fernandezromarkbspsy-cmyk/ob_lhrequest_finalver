@@ -6,6 +6,7 @@ import (
 	"strings"
 	"time"
 
+	appauth "golang-dashboard/internal/auth"
 	"golang-dashboard/internal/database"
 	"golang-dashboard/internal/events"
 	"golang-dashboard/internal/models"
@@ -24,6 +25,16 @@ const (
 	StatusCanceled   = "CANCELED"
 	StatusRejected   = "REJECTED"
 )
+
+var manilaLocation *time.Location
+
+func init() {
+	loc, err := time.LoadLocation("Asia/Manila")
+	if err != nil {
+		loc = time.UTC
+	}
+	manilaLocation = loc
+}
 
 type RequestRow struct {
 	ID               uint   `json:"id"`
@@ -86,83 +97,91 @@ type requestPayload struct {
 }
 
 type userPayload struct {
-	Name      string `json:"name" form:"name"`
-	Role      string `json:"role" form:"role"`
-	Email     string `json:"email" form:"email"`
-	OpsID     string `json:"ops_id" form:"ops_id"`
-	ActorRole string `json:"actor_role" form:"actor_role"`
-	IsActive  bool   `json:"is_active" form:"is_active"`
+	Name     string `json:"name" form:"name"`
+	Role     string `json:"role" form:"role"`
+	Email    string `json:"email" form:"email"`
+	OpsID    string `json:"ops_id" form:"ops_id"`
+	IsActive bool   `json:"is_active" form:"is_active"`
 }
 
 func Dashboard(c echo.Context) error {
+	stats := loadStats()
 	data := map[string]interface{}{
 		"Title":       "Dashboard",
 		"ActiveMenu":  "dashboard",
-		"Stats":       loadStats(),
+		"Stats":       stats,
 		"RecentRows":  loadRecentRows(8),
-		"PendingOps":  pendingCount(StatusPendingOps),
-		"PendingMM":   pendingCount(StatusPendingMM),
-		"PendingDock": pendingCount(StatusForDocking),
+		"PendingOps":  stats.PendingOps,
+		"PendingMM":   stats.PendingMM,
+		"PendingDock": stats.ForDocking,
 	}
 
 	return c.Render(http.StatusOK, "dashboard.html", data)
 }
 
 func LHRequests(c echo.Context) error {
+	stats := loadStats()
 	data := map[string]interface{}{
 		"Title":       "LH Request",
 		"ActiveMenu":  "lh-request",
 		"Queue":       "ops",
 		"Requests":    loadRequestRows(""),
-		"PendingOps":  pendingCount(StatusPendingOps),
-		"PendingMM":   pendingCount(StatusPendingMM),
-		"PendingDock": pendingCount(StatusForDocking),
+		"PendingOps":  stats.PendingOps,
+		"PendingMM":   stats.PendingMM,
+		"PendingDock": stats.ForDocking,
 	}
 
 	return c.Render(http.StatusOK, "lh_requests.html", data)
 }
 
 func TruckRequests(c echo.Context) error {
+	stats := loadStats()
 	data := map[string]interface{}{
 		"Title":       "Truck Request",
 		"ActiveMenu":  "truck-request",
 		"Queue":       "mm",
 		"Requests":    loadRequestRows(""),
-		"PendingOps":  pendingCount(StatusPendingOps),
-		"PendingMM":   pendingCount(StatusPendingMM),
-		"PendingDock": pendingCount(StatusForDocking),
+		"PendingOps":  stats.PendingOps,
+		"PendingMM":   stats.PendingMM,
+		"PendingDock": stats.ForDocking,
 	}
 
 	return c.Render(http.StatusOK, "truck_requests.html", data)
 }
 
 func DockOfficer(c echo.Context) error {
+	stats := loadStats()
 	data := map[string]interface{}{
 		"Title":       "Dock Officer",
 		"ActiveMenu":  "dock-officer",
 		"Queue":       "dock",
 		"Requests":    loadRequestRows("dock"),
-		"PendingOps":  pendingCount(StatusPendingOps),
-		"PendingMM":   pendingCount(StatusPendingMM),
-		"PendingDock": pendingCount(StatusForDocking),
+		"PendingOps":  stats.PendingOps,
+		"PendingMM":   stats.PendingMM,
+		"PendingDock": stats.ForDocking,
 	}
 
 	return c.Render(http.StatusOK, "dock_officer.html", data)
 }
 
 func Settings(c echo.Context) error {
+	stats := loadStats()
 	data := map[string]interface{}{
 		"Title":       "Settings",
 		"ActiveMenu":  "settings",
-		"PendingOps":  pendingCount(StatusPendingOps),
-		"PendingMM":   pendingCount(StatusPendingMM),
-		"PendingDock": pendingCount(StatusForDocking),
+		"PendingOps":  stats.PendingOps,
+		"PendingMM":   stats.PendingMM,
+		"PendingDock": stats.ForDocking,
 	}
 
 	return c.Render(http.StatusOK, "settings.html", data)
 }
 
 func LoginAPI(c echo.Context) error {
+	if database.DB == nil {
+		return echo.NewHTTPError(http.StatusServiceUnavailable, "Database is not configured")
+	}
+
 	payload := loginPayload{}
 	if err := c.Bind(&payload); err != nil {
 		return echo.NewHTTPError(http.StatusBadRequest, "Invalid login payload")
@@ -171,10 +190,6 @@ func LoginAPI(c echo.Context) error {
 	loginType := strings.ToLower(strings.TrimSpace(payload.LoginType))
 	email := strings.TrimSpace(payload.Email)
 	opsID := strings.TrimSpace(payload.OpsID)
-
-	if database.DB == nil {
-		return c.JSON(http.StatusOK, demoUser(loginType, email, opsID))
-	}
 
 	user := models.User{}
 	query := database.DB.Where("is_active = ?", true)
@@ -208,6 +223,13 @@ func LoginAPI(c echo.Context) error {
 		return echo.NewHTTPError(http.StatusUnauthorized, "Invalid credentials")
 	}
 
+	tokenStr, err := appauth.IssueToken(user.ID, user.Role, user.Name)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusInternalServerError, "Unable to create session")
+	}
+
+	appauth.SetSessionCookie(c, tokenStr)
+
 	return c.JSON(http.StatusOK, map[string]interface{}{
 		"id":       user.ID,
 		"name":     user.Name,
@@ -217,6 +239,11 @@ func LoginAPI(c echo.Context) error {
 		"is_fte":   user.IsFTE,
 		"redirect": redirectForRole(user.Role),
 	})
+}
+
+func LogoutAPI(c echo.Context) error {
+	appauth.ClearSessionCookie(c)
+	return c.JSON(http.StatusOK, map[string]string{"status": "logged out"})
 }
 
 func StatsAPI(c echo.Context) error {
@@ -420,7 +447,10 @@ func DockRequestAPI(c echo.Context) error {
 }
 
 func ConfirmRequestAPI(c echo.Context) error {
-	return ForDockingRequestAPI(c)
+	return updateRequest(c, "confirm", func(request *models.Request, payload requestPayload, now time.Time) {
+		request.Status = StatusConfirmed
+		request.ConfirmedAt = &now
+	})
 }
 
 func ClustersAPI(c echo.Context) error {
@@ -484,13 +514,14 @@ func CreateUserAPI(c echo.Context) error {
 		return echo.NewHTTPError(http.StatusServiceUnavailable, "Database is not configured")
 	}
 
+	sessionUser, ok := c.Get("auth_user").(*appauth.SessionUser)
+	if !ok || sessionUser == nil || !canManageRoles(sessionUser.Role) {
+		return echo.NewHTTPError(http.StatusForbidden, "Only FTE Ops and FTE MM can add roles")
+	}
+
 	payload := userPayload{IsActive: true}
 	if err := c.Bind(&payload); err != nil {
 		return echo.NewHTTPError(http.StatusBadRequest, "Invalid user payload")
-	}
-
-	if !canManageRoles(payload.ActorRole) {
-		return echo.NewHTTPError(http.StatusForbidden, "Only FTE Ops and FTE MM can add roles")
 	}
 
 	name := strings.TrimSpace(payload.Name)
@@ -517,10 +548,6 @@ func CreateUserAPI(c echo.Context) error {
 		return echo.NewHTTPError(http.StatusBadRequest, "Ops ID is required for Backroom roles")
 	}
 
-	if exists := userIdentifierExists(role, email, opsID); exists {
-		return echo.NewHTTPError(http.StatusConflict, "A user with this identifier already exists")
-	}
-
 	user := models.User{
 		Name:     name,
 		Role:     role,
@@ -534,6 +561,9 @@ func CreateUserAPI(c echo.Context) error {
 	}
 
 	if err := database.DB.Create(&user).Error; err != nil {
+		if isUniqueConstraintError(err) {
+			return echo.NewHTTPError(http.StatusConflict, "A user with this identifier already exists")
+		}
 		return echo.NewHTTPError(http.StatusInternalServerError, "Unable to create user")
 	}
 
@@ -588,7 +618,6 @@ func updateRequest(c echo.Context, action string, mutate func(*models.Request, r
 func publishRequestEvent(eventType, action, previousStatus string, request models.Request) {
 	status := normalizeStatus(request)
 	events.DefaultBus.Publish(events.Event{
-		ID:             strconv.FormatInt(time.Now().UnixNano(), 10),
 		Type:           eventType,
 		OccurredAt:     time.Now(),
 		Aggregate:      "request",
@@ -632,19 +661,11 @@ func isFTERole(role string) bool {
 	}
 }
 
-func userIdentifierExists(role, email, opsID string) bool {
-	var count int64
-	if isFTERole(role) {
-		database.DB.Model(&models.User{}).
-			Where("LOWER(COALESCE(email, '')) = LOWER(?)", strings.TrimSpace(email)).
-			Count(&count)
-		return count > 0
-	}
-
-	database.DB.Model(&models.User{}).
-		Where("LOWER(COALESCE(ops_id, '')) = LOWER(?)", strings.TrimSpace(opsID)).
-		Count(&count)
-	return count > 0
+func isUniqueConstraintError(err error) bool {
+	msg := err.Error()
+	return strings.Contains(msg, "unique constraint") ||
+		strings.Contains(msg, "duplicate key") ||
+		strings.Contains(msg, "violates unique")
 }
 
 func stringPtr(value string) *string {
@@ -670,36 +691,48 @@ func roleLabel(role string) string {
 	}
 }
 
+func manilaToday() time.Time {
+	now := time.Now().In(manilaLocation)
+	y, m, d := now.Date()
+	return time.Date(y, m, d, 0, 0, 0, 0, manilaLocation)
+}
+
 func loadStats() AppStats {
 	stats := AppStats{}
 	if database.DB == nil {
 		return stats
 	}
 
-	start := time.Now().Truncate(24 * time.Hour)
-	database.DB.Model(&models.Request{}).Where("request_timestamp >= ?", start).Count(&stats.TotalToday)
-	database.DB.Model(&models.Request{}).Where("status IN ? OR status = ''", []string{StatusPendingOps, StatusRejected}).Count(&stats.PendingOps)
-	database.DB.Model(&models.Request{}).Where("status = ?", StatusPendingMM).Count(&stats.PendingMM)
-	database.DB.Model(&models.Request{}).Where("status = ?", StatusForDocking).Count(&stats.ForDocking)
-	database.DB.Model(&models.Request{}).Where("status IN ?", []string{StatusAssigned, StatusForDocking, StatusDocked, StatusConfirmed}).Count(&stats.ConfirmedTrucks)
-	database.DB.Model(&models.Request{}).Where("status IN ?", []string{StatusRejected, StatusCanceled}).Count(&stats.Rejected)
+	todayStart := manilaToday()
 
+	type statsResult struct {
+		TotalToday      int64 `gorm:"column:total_today"`
+		PendingOps      int64 `gorm:"column:pending_ops"`
+		PendingMM       int64 `gorm:"column:pending_mm"`
+		ForDocking      int64 `gorm:"column:for_docking"`
+		ConfirmedTrucks int64 `gorm:"column:confirmed_trucks"`
+		Rejected        int64 `gorm:"column:rejected"`
+	}
+
+	var r statsResult
+	database.DB.Raw(`
+		SELECT
+			COUNT(*) FILTER (WHERE request_timestamp >= ?) AS total_today,
+			COUNT(*) FILTER (WHERE status IN ('PENDING_OPS','REJECTED') OR status = '') AS pending_ops,
+			COUNT(*) FILTER (WHERE status = 'PENDING_MM') AS pending_mm,
+			COUNT(*) FILTER (WHERE status = 'FOR_DOCKING') AS for_docking,
+			COUNT(*) FILTER (WHERE status IN ('ASSIGNED','FOR_DOCKING','DOCKED','CONFIRMED')) AS confirmed_trucks,
+			COUNT(*) FILTER (WHERE status IN ('REJECTED','CANCELED')) AS rejected
+		FROM requests
+	`, todayStart).Scan(&r)
+
+	stats.TotalToday = r.TotalToday
+	stats.PendingOps = r.PendingOps
+	stats.PendingMM = r.PendingMM
+	stats.ForDocking = r.ForDocking
+	stats.ConfirmedTrucks = r.ConfirmedTrucks
+	stats.Rejected = r.Rejected
 	return stats
-}
-
-func pendingCount(status string) int64 {
-	if database.DB == nil {
-		return 0
-	}
-
-	var count int64
-	if status == StatusPendingOps {
-		database.DB.Model(&models.Request{}).Where("status IN ? OR status = ''", []string{StatusPendingOps, StatusRejected}).Count(&count)
-		return count
-	}
-
-	database.DB.Model(&models.Request{}).Where("status = ?", status).Count(&count)
-	return count
 }
 
 func loadRecentRows(limit int) []RequestRow {
@@ -719,9 +752,9 @@ func loadRecentRows(limit int) []RequestRow {
 }
 
 func requestTrendWindow(now time.Time) (time.Time, time.Time) {
-	location := now.Location()
+	now = now.In(manilaLocation)
 	year, month, day := now.Date()
-	todayStart := time.Date(year, month, day, 0, 0, 0, 0, location)
+	todayStart := time.Date(year, month, day, 0, 0, 0, 0, manilaLocation)
 	todaySixAM := todayStart.Add(6 * time.Hour)
 	todaySixPM := todayStart.Add(18 * time.Hour)
 
@@ -733,11 +766,16 @@ func requestTrendWindow(now time.Time) (time.Time, time.Time) {
 	return todaySixPM, todaySixPM.Add(12 * time.Hour)
 }
 
+type trendRow struct {
+	Hour  time.Time `gorm:"column:hour"`
+	Count int       `gorm:"column:count"`
+}
+
 func hourlyRequestTrend(start, end time.Time) []TrendPoint {
 	points := make([]TrendPoint, 0, int(end.Sub(start).Hours()))
 	for hour := start; hour.Before(end); hour = hour.Add(time.Hour) {
 		points = append(points, TrendPoint{
-			Label: hour.Format("3PM"),
+			Label: hour.In(manilaLocation).Format("3PM"),
 			Count: 0,
 		})
 	}
@@ -746,19 +784,22 @@ func hourlyRequestTrend(start, end time.Time) []TrendPoint {
 		return points
 	}
 
-	requests := []models.Request{}
-	database.DB.
-		Select("request_timestamp").
-		Where("request_timestamp >= ? AND request_timestamp < ?", start, end).
-		Find(&requests)
+	var rows []trendRow
+	database.DB.Raw(`
+		SELECT
+			date_trunc('hour', request_timestamp AT TIME ZONE 'Asia/Manila') AS hour,
+			COUNT(*) AS count
+		FROM requests
+		WHERE request_timestamp >= ? AND request_timestamp < ?
+		GROUP BY 1
+		ORDER BY 1
+	`, start, end).Scan(&rows)
 
-	for _, request := range requests {
-		if request.RequestTimestamp.Before(start) || !request.RequestTimestamp.Before(end) {
-			continue
-		}
-		index := int(request.RequestTimestamp.Sub(start).Hours())
+	for _, row := range rows {
+		h := row.Hour.In(manilaLocation)
+		index := int(h.Sub(start.In(manilaLocation)).Hours())
 		if index >= 0 && index < len(points) {
-			points[index].Count++
+			points[index].Count = row.Count
 		}
 	}
 
@@ -766,7 +807,7 @@ func hourlyRequestTrend(start, end time.Time) []TrendPoint {
 }
 
 func formatTrendPeriod(start, end time.Time) string {
-	return start.Format("Jan 02, 3 PM") + " - " + end.Format("Jan 02, 3 PM")
+	return start.In(manilaLocation).Format("Jan 02, 3 PM") + " - " + end.In(manilaLocation).Format("Jan 02, 3 PM")
 }
 
 func loadRequestRows(queue string) []RequestRow {
@@ -796,20 +837,15 @@ func queryRequestRows(queue, status, search, dateFrom, dateTo string) []RequestR
 		like := "%" + search + "%"
 		query = query.Where(
 			"plate_number LIKE ? OR cluster LIKE ? OR linehaul_trip_no LIKE ? OR driver_id LIKE ? OR region LIKE ? OR dock_no LIKE ?",
-			like,
-			like,
-			like,
-			like,
-			like,
-			like,
+			like, like, like, like, like, like,
 		)
 	}
 
-	if from, err := time.Parse("2006-01-02", dateFrom); err == nil {
+	if from, err := time.ParseInLocation("2006-01-02", dateFrom, manilaLocation); err == nil {
 		query = query.Where("request_timestamp >= ?", from)
 	}
 
-	if to, err := time.Parse("2006-01-02", dateTo); err == nil {
+	if to, err := time.ParseInLocation("2006-01-02", dateTo, manilaLocation); err == nil {
 		query = query.Where("request_timestamp < ?", to.Add(24*time.Hour))
 	}
 
@@ -895,15 +931,13 @@ func formatTime(value time.Time) string {
 	if value.IsZero() {
 		return "-"
 	}
-
-	return value.Format("Jan 02, 2006 03:04 PM")
+	return value.In(manilaLocation).Format("Jan 02, 2006 03:04 PM")
 }
 
 func formatTimePtr(value *time.Time) string {
 	if value == nil {
 		return ""
 	}
-
 	return formatTime(*value)
 }
 
@@ -911,8 +945,7 @@ func formatDate(value time.Time) string {
 	if value.IsZero() {
 		return ""
 	}
-
-	return value.Format("2006-01-02")
+	return value.In(manilaLocation).Format("2006-01-02")
 }
 
 func parseInputTime(value string) (time.Time, error) {
@@ -922,7 +955,7 @@ func parseInputTime(value string) (time.Time, error) {
 	}
 
 	for _, layout := range []string{"2006-01-02T15:04", time.RFC3339, "2006-01-02 15:04"} {
-		if parsed, err := time.ParseInLocation(layout, value, time.Local); err == nil {
+		if parsed, err := time.ParseInLocation(layout, value, manilaLocation); err == nil {
 			return parsed, nil
 		}
 	}
@@ -938,37 +971,5 @@ func redirectForRole(role string) string {
 		return "/dock/officer"
 	default:
 		return "/dashboard"
-	}
-}
-
-func demoUser(loginType, email, opsID string) map[string]interface{} {
-	role := "ops_pic"
-	name := "Backroom Demo"
-	redirect := "/dashboard"
-
-	if loginType == "fte" {
-		role = "fte_ops"
-		name = "FTE Ops Demo"
-		if strings.Contains(strings.ToLower(email), "mm") {
-			role = "fte_mm"
-			name = "FTE MM Demo"
-			redirect = "/midmile/truck-request"
-		}
-	}
-
-	if loginType == "backroom" && (strings.Contains(strings.ToLower(opsID), "dock") || strings.Contains(strings.ToLower(opsID), "doc")) {
-		role = "dock_officer"
-		name = "Dock Officer Demo"
-		redirect = "/dock/officer"
-	}
-
-	return map[string]interface{}{
-		"id":       0,
-		"name":     name,
-		"role":     role,
-		"email":    email,
-		"ops_id":   opsID,
-		"is_fte":   role == "fte_ops" || role == "fte_mm",
-		"redirect": redirect,
 	}
 }
