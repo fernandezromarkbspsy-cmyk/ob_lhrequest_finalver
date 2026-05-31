@@ -19,6 +19,13 @@ export const useAuthStore = create<AuthState>()(
         set({ user: null })
       },
     }),
-    { name: 'soc5_user' }
+    {
+      name: 'soc5_user',
+      partialize: (state) => ({
+        user: state.user
+          ? { name: state.user.name, role: state.user.role, is_fte: state.user.is_fte } as AuthUser
+          : null,
+      }),
+    }
   )
 )

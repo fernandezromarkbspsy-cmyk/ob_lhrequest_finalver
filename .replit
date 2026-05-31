@@ -62,4 +62,4 @@ build = ["go", "build", "-o", "server", "./cmd/server"]
 [userenv]
 
 [userenv.shared]
-GITHUB_PAT = ""
+GITHUB_TOKEN = "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"
