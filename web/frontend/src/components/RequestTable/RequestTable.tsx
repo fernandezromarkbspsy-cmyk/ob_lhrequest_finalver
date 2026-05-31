@@ -248,17 +248,30 @@ export default function RequestTable({
             disabled={page <= 1}
             onClick={() => setPage((p) => p - 1)}
           >‹</button>
-          {Array.from({ length: Math.min(totalPages, 7) }, (_, i) => {
-            const p = i + 1
-            return (
-              <button
-                key={p}
-                className={`pagination-btn${p === page ? ' pagination-btn--active' : ''}`}
-                onClick={() => setPage(p)}
-              >{p}</button>
-            )
-          })}
-          {totalPages > 7 && <span style={{ padding: '0 4px' }}>…</span>}
+          {(() => {
+            const pages: number[] = []
+            for (let i = 1; i <= totalPages; i++) {
+              if (i === 1 || i === totalPages || (i >= page - 2 && i <= page + 2)) {
+                pages.push(i)
+              }
+            }
+            const result = []
+            let prev = 0
+            for (const p of pages) {
+              if (prev > 0 && p - prev > 1) {
+                result.push(<span key={`ell-${p}`} style={{ padding: '0 4px' }}>…</span>)
+              }
+              result.push(
+                <button
+                  key={p}
+                  className={`pagination-btn${p === page ? ' pagination-btn--active' : ''}`}
+                  onClick={() => setPage(p)}
+                >{p}</button>
+              )
+              prev = p
+            }
+            return result
+          })()}
           <button
             className="pagination-btn"
             disabled={page >= totalPages}
