@@ -4,6 +4,7 @@ import { setOnAuthError } from '@/api/client'
 import { useAuthStore } from '@/store/authStore'
 import { useUIStore } from '@/store/uiStore'
 import { useSSE } from '@/hooks/useSSE'
+import ErrorBoundary from '@/components/ErrorBoundary'
 import Layout from '@/components/Layout/Layout'
 import LoginModal from '@/components/LoginModal/LoginModal'
 import Dashboard from '@/pages/Dashboard'
@@ -23,22 +24,24 @@ function AppShell() {
   }, [logout])
 
   return (
-    <>
-      {!user && <LoginModal />}
-      {user && (
-        <Layout>
-          <Routes>
-            <Route path="/" element={<Navigate to="/dashboard" replace />} />
-            <Route path="/dashboard" element={<Dashboard />} />
-            <Route path="/outbound/lh-request" element={<LHRequests />} />
-            <Route path="/midmile/truck-request" element={<TruckRequests />} />
-            <Route path="/dock/officer" element={<DockOfficer />} />
-            <Route path="/settings" element={<Settings />} />
-            <Route path="*" element={<Navigate to="/dashboard" replace />} />
-          </Routes>
-        </Layout>
-      )}
-    </>
+    <ErrorBoundary>
+      <>
+        {!user && <LoginModal />}
+        {user && (
+          <Layout>
+            <Routes>
+              <Route path="/" element={<Navigate to="/dashboard" replace />} />
+              <Route path="/dashboard" element={<Dashboard />} />
+              <Route path="/outbound/lh-request" element={<LHRequests />} />
+              <Route path="/midmile/truck-request" element={<TruckRequests />} />
+              <Route path="/dock/officer" element={<DockOfficer />} />
+              <Route path="/settings" element={<Settings />} />
+              <Route path="*" element={<Navigate to="/dashboard" replace />} />
+            </Routes>
+          </Layout>
+        )}
+      </>
+    </ErrorBoundary>
   )
 }
 
