@@ -356,11 +356,19 @@ func CreateRequestAPI(c echo.Context) error {
 }
 
 func EditRequestAPI(c echo.Context) error {
-        return updateRequest(c, "edit", func(request *models.Request, payload requestPayload, now time.Time) {
-                if request.Status != StatusPendingOps && request.Status != StatusRejected && request.Status != "" {
-                        return
+        if database.DB != nil {
+                id, err := strconv.Atoi(c.Param("id"))
+                if err == nil && id > 0 {
+                        var current models.Request
+                        if err := database.DB.Select("status").First(&current, id).Error; err == nil {
+                                if current.Status != StatusPendingOps && current.Status != StatusRejected && current.Status != "" {
+                                        return echo.NewHTTPError(http.StatusConflict, "Request cannot be edited in its current status")
+                                }
+                        }
                 }
+        }
 
+        return updateRequest(c, "edit", func(request *models.Request, payload requestPayload, now time.Time) {
                 clusterName, region, dockNo, backlogs, ok := requestDetailsFromPayload(payload)
                 if !ok {
                         return
