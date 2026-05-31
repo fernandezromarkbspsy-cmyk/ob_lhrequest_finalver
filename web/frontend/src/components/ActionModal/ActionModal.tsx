@@ -115,7 +115,7 @@ export default function ActionModal({ req, action, onClose, onSubmit }: Props) {
                 </div>
                 <div className="form-group">
                   <label className="form-label">Docking Time</label>
-                  <input className="form-input" type="time" value={form.docking_time} onChange={set('docking_time')} required />
+                  <input className="form-input" type="datetime-local" value={form.docking_time} onChange={set('docking_time')} required />
                 </div>
               </>
             )}

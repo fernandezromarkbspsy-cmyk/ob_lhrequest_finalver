@@ -677,7 +677,7 @@ func publishRequestEvent(eventType, action, previousStatus string, request model
 
 func canManageRoles(role string) bool {
         role = normalizeRole(role)
-        return role == "fte_ops" || role == "fte_mm"
+        return role == "fte_ops" || role == "fte_mm" || role == "admin"
 }
 
 func normalizeRole(role string) string {
