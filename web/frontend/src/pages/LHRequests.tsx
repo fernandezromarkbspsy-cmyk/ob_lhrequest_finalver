@@ -21,7 +21,7 @@ const STATUS_OPTIONS = [
 
 export default function LHRequests() {
   const user = useAuthStore((s) => s.user)
-  const [filter, setFilter] = useState<RequestsFilter>({ queue: 'ops' })
+  const [filter, setFilter] = useState<RequestsFilter>({ queue: 'ops', page: 1, page_size: 20 })
   const { data, isLoading, refetch } = useRequests(filter)
   const { data: clusters } = useClusters()
 
@@ -33,7 +33,7 @@ export default function LHRequests() {
   const [showCreate, setShowCreate] = useState(false)
   const [editReq, setEditReq] = useState<Request | undefined>()
 
-  const canCreate = user && ['fte_ops', 'ops_pic', 'admin'].includes(user.role)
+  const canCreate = Boolean(user && ['fte_ops', 'ops_pic', 'admin'].includes(user.role))
 
   const handleAction = (req: Request, action: RequestAction) => {
     if (action === 'edit') { setEditReq(req); return }
@@ -68,6 +68,7 @@ export default function LHRequests() {
 
       <RequestTable
         requests={data?.requests ?? []}
+        total={data?.total}
         loading={isLoading}
         filter={filter}
         onFilterChange={(f) => setFilter((prev) => ({ ...prev, ...f }))}

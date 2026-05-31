@@ -28,11 +28,11 @@ async function apiFetch<T>(url: string, options?: RequestInit): Promise<T> {
 
 // ── Auth ─────────────────────────────────────────────────────
 
-export async function login(loginType: string, email: string, opsId: string): Promise<AuthUser> {
+export async function login(loginType: string, email: string, opsId: string, password: string): Promise<AuthUser> {
   const res = await fetch('/api/login', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ login_type: loginType, email, ops_id: opsId }),
+    body: JSON.stringify({ login_type: loginType, email, ops_id: opsId, password }),
   })
   if (!res.ok) {
     const body = await res.json().catch(() => ({}))
@@ -66,6 +66,8 @@ export function fetchRequests(filter: RequestsFilter = {}): Promise<RequestsResp
   if (filter.search) params.set('search', filter.search)
   if (filter.date_from) params.set('date_from', filter.date_from)
   if (filter.date_to) params.set('date_to', filter.date_to)
+  if (filter.page) params.set('page', String(filter.page))
+  if (filter.page_size) params.set('page_size', String(filter.page_size))
   const qs = params.toString()
   return apiFetch(`/api/requests${qs ? '?' + qs : ''}`)
 }
@@ -91,7 +93,7 @@ export function fetchClusters(): Promise<Cluster[]> {
 // ── Users ────────────────────────────────────────────────────
 
 export function createUser(payload: {
-  name: string; role: string; email?: string; ops_id?: string
+  name: string; role: string; email?: string; ops_id?: string; password?: string
 }): Promise<unknown> {
   return apiFetch('/api/users', { method: 'POST', body: JSON.stringify(payload) })
 }

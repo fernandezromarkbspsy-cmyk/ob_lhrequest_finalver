@@ -10,6 +10,7 @@ export default function LoginModal() {
   const [tab, setTab] = useState<Tab>('fte')
   const [email, setEmail] = useState('')
   const [opsId, setOpsId] = useState('')
+  const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)
   const setUser = useAuthStore((s) => s.setUser)
   const navigate = useNavigate()
@@ -20,7 +21,7 @@ export default function LoginModal() {
 
     setLoading(true)
     try {
-      const user = await login(tab, tab === 'fte' ? email : '', tab === 'backroom' ? opsId : '')
+      const user = await login(tab, tab === 'fte' ? email : '', tab === 'backroom' ? opsId : '', password)
       setUser(user)
       const redirect = user.redirect || '/dashboard'
       navigate(redirect, { replace: true })
@@ -91,6 +92,18 @@ export default function LoginModal() {
               />
             </div>
           )}
+
+          <div className="form-group">
+            <label className="form-label">Password</label>
+            <input
+              className="form-input"
+              type="password"
+              placeholder="Enter your password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              autoComplete="current-password"
+            />
+          </div>
 
           <button
             type="submit"

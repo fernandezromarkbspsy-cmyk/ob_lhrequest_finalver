@@ -75,6 +75,10 @@ export interface TrendData {
 export interface RequestsResponse {
   requests: Request[]
   count: number
+  total: number
+  page: number
+  page_size: number
+  has_more: boolean
 }
 
 export interface RequestsFilter {
@@ -83,6 +87,8 @@ export interface RequestsFilter {
   search?: string
   date_from?: string
   date_to?: string
+  page?: number
+  page_size?: number
 }
 
 export interface RequestPayload {

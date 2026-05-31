@@ -5,6 +5,7 @@ import { useAuthStore } from '@/store/authStore'
 
 interface Props {
   requests: Request[]
+  total?: number
   loading?: boolean
   filter: RequestsFilter
   onFilterChange: (f: Partial<RequestsFilter>) => void
@@ -67,6 +68,7 @@ function actionVariant(a: RequestAction): string {
 
 export default function RequestTable({
   requests,
+  total,
   loading,
   filter,
   onFilterChange,
@@ -79,12 +81,12 @@ export default function RequestTable({
   const user = useAuthStore((s) => s.user)
   const [sortKey, setSortKey] = useState<keyof Request>('request_timestamp')
   const [sortDir, setSortDir] = useState<SortDir>('desc')
-  const [page, setPage] = useState(1)
+  const page = filter.page ?? 1
 
   const handleSort = (key: keyof Request) => {
     if (sortKey === key) setSortDir((d) => (d === 'asc' ? 'desc' : 'asc'))
     else { setSortKey(key); setSortDir('asc') }
-    setPage(1)
+    onFilterChange({ page: 1, page_size: PAGE_SIZE })
   }
 
   const sorted = [...requests].sort((a, b) => {
@@ -95,8 +97,9 @@ export default function RequestTable({
       : String(bv).localeCompare(String(av))
   })
 
-  const totalPages = Math.max(1, Math.ceil(sorted.length / PAGE_SIZE))
-  const pageData = sorted.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE)
+  const totalRecords = total ?? sorted.length
+  const totalPages = Math.max(1, Math.ceil(totalRecords / PAGE_SIZE))
+  const pageData = sorted
 
   const SortIcon = ({ k }: { k: keyof Request }) => {
     if (sortKey !== k) return <ChevronDown size={12} style={{ opacity: 0.3 }} />
@@ -122,7 +125,7 @@ export default function RequestTable({
             style={{ paddingLeft: 32 }}
             placeholder="Search plate, cluster, driver…"
             value={filter.search ?? ''}
-            onChange={(e) => { onFilterChange({ search: e.target.value }); setPage(1) }}
+            onChange={(e) => { onFilterChange({ search: e.target.value, page: 1, page_size: PAGE_SIZE }) }}
           />
         </div>
 
@@ -131,14 +134,14 @@ export default function RequestTable({
           className="form-input"
           style={{ width: 148 }}
           value={filter.date_from ?? ''}
-          onChange={(e) => { onFilterChange({ date_from: e.target.value }); setPage(1) }}
+          onChange={(e) => { onFilterChange({ date_from: e.target.value, page: 1, page_size: PAGE_SIZE }) }}
         />
         <input
           type="date"
           className="form-input"
           style={{ width: 148 }}
           value={filter.date_to ?? ''}
-          onChange={(e) => { onFilterChange({ date_to: e.target.value }); setPage(1) }}
+          onChange={(e) => { onFilterChange({ date_to: e.target.value, page: 1, page_size: PAGE_SIZE }) }}
         />
 
         {statusOptions && (
@@ -146,7 +149,7 @@ export default function RequestTable({
             className="form-select"
             style={{ width: 160 }}
             value={filter.status ?? 'ALL'}
-            onChange={(e) => { onFilterChange({ status: e.target.value }); setPage(1) }}
+            onChange={(e) => { onFilterChange({ status: e.target.value, page: 1, page_size: PAGE_SIZE }) }}
           >
             <option value="ALL">All statuses</option>
             {statusOptions.map((o) => (
@@ -241,12 +244,12 @@ export default function RequestTable({
 
       {/* Pagination */}
       <div className="pagination">
-        <span>{requests.length} record{requests.length !== 1 ? 's' : ''}</span>
+        <span>{totalRecords} record{totalRecords !== 1 ? 's' : ''}</span>
         <div className="pagination-controls">
           <button
             className="pagination-btn"
             disabled={page <= 1}
-            onClick={() => setPage((p) => p - 1)}
+            onClick={() => onFilterChange({ page: page - 1, page_size: PAGE_SIZE })}
           >‹</button>
           {(() => {
             const pages: number[] = []
@@ -265,7 +268,7 @@ export default function RequestTable({
                 <button
                   key={p}
                   className={`pagination-btn${p === page ? ' pagination-btn--active' : ''}`}
-                  onClick={() => setPage(p)}
+                  onClick={() => onFilterChange({ page: p, page_size: PAGE_SIZE })}
                 >{p}</button>
               )
               prev = p
@@ -275,7 +278,7 @@ export default function RequestTable({
           <button
             className="pagination-btn"
             disabled={page >= totalPages}
-            onClick={() => setPage((p) => p + 1)}
+            onClick={() => onFilterChange({ page: page + 1, page_size: PAGE_SIZE })}
           >›</button>
         </div>
       </div>

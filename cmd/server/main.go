@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	"log"
 	"os"
 	"os/signal"
@@ -14,6 +13,7 @@ import (
 	"golang-dashboard/internal/database"
 	"golang-dashboard/internal/events"
 	"golang-dashboard/internal/models"
+	"golang-dashboard/internal/observability"
 	"golang-dashboard/internal/routes"
 
 	"github.com/joho/godotenv"
@@ -30,12 +30,18 @@ func main() {
 
 	database.Connect()
 	if database.DB != nil {
-		database.DB.AutoMigrate(
-			&models.Cluster{},
-			&models.User{},
-			&models.Request{},
-		)
-		ensureWorkflowConstraints()
+		if os.Getenv("APP_ENV") != "production" {
+			database.DB.AutoMigrate(
+				&models.Cluster{},
+				&models.User{},
+				&models.Request{},
+			)
+		}
+		if os.Getenv("RUN_MIGRATIONS") == "true" {
+			if err := database.RunMigrations(database.DB); err != nil {
+				log.Fatal("Database migrations failed:", err)
+			}
+		}
 	}
 
 	cache.Connect()
@@ -44,6 +50,7 @@ func main() {
 	e.HideBanner = true
 	e.Use(middleware.Logger())
 	e.Use(middleware.Recover())
+	e.Use(observability.Middleware())
 
 	e.Static("/truck_label", "web/truck_label")
 
@@ -101,37 +108,4 @@ func main() {
 		log.Fatal("Forced shutdown:", err)
 	}
 	log.Println("Server exited")
-}
-
-func ensureWorkflowConstraints() {
-	statuses := "'PENDING_OPS', 'PENDING_MM', 'ASSIGNED', 'FOR_DOCKING', 'DOCKED', 'CONFIRMED', 'REJECTED', 'CANCELED'"
-	if err := database.DB.Exec(`ALTER TABLE requests DROP CONSTRAINT IF EXISTS requests_status_check`).Error; err != nil {
-		log.Println("Unable to drop request status constraint:", err)
-	}
-	if err := database.DB.Exec(fmt.Sprintf(`ALTER TABLE requests ADD CONSTRAINT requests_status_check CHECK (status IN (%s))`, statuses)).Error; err != nil {
-		log.Println("Unable to add request status constraint:", err)
-	}
-
-	roles := "'fte_ops', 'fte_mm', 'ops_pic', 'dock_officer', 'doc_officer', 'data_team', 'admin'"
-	if err := database.DB.Exec(`
-DO $$
-DECLARE
-	role_constraint text;
-BEGIN
-	FOR role_constraint IN
-		SELECT conname
-		FROM pg_constraint
-		WHERE conrelid = 'users'::regclass
-			AND contype = 'c'
-			AND pg_get_constraintdef(oid) ILIKE '%role%'
-	LOOP
-		EXECUTE format('ALTER TABLE users DROP CONSTRAINT %I', role_constraint);
-	END LOOP;
-END $$;
-`).Error; err != nil {
-		log.Println("Unable to drop user role constraint:", err)
-	}
-	if err := database.DB.Exec(fmt.Sprintf(`ALTER TABLE users ADD CONSTRAINT users_role_check CHECK (role IN (%s))`, roles)).Error; err != nil {
-		log.Println("Unable to add user role constraint:", err)
-	}
 }

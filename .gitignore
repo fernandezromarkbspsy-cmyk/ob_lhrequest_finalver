@@ -2,3 +2,6 @@
 *.exe
 /tmp
 .DS_Store
+web/frontend/node_modules/
+web/frontend/tsconfig.tsbuildinfo
+web/dist/
