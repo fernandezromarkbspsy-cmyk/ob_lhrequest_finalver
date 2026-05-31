@@ -939,13 +939,16 @@ func normalizeStatus(request models.Request) string {
         if request.RejectedAt != nil || request.RejectionRemarks != "" {
                 return StatusRejected
         }
+        if request.ConfirmedAt != nil {
+                return StatusConfirmed
+        }
         if request.DockedTime != nil {
                 return StatusDocked
         }
-        if request.ConfirmedAt != nil {
+        if request.ProvideTime != nil {
                 return StatusForDocking
         }
-        if request.ApprovedAt != nil || request.ProvideTime != nil {
+        if request.ApprovedAt != nil {
                 return StatusPendingMM
         }
         return StatusPendingOps
@@ -1005,6 +1008,12 @@ func parseInputTime(value string) (time.Time, error) {
                 if parsed, err := time.ParseInLocation(layout, value, manilaLocation); err == nil {
                         return parsed, nil
                 }
+        }
+
+        if parsed, err := time.ParseInLocation("15:04", value, manilaLocation); err == nil {
+                now := time.Now().In(manilaLocation)
+                combined := time.Date(now.Year(), now.Month(), now.Day(), parsed.Hour(), parsed.Minute(), 0, 0, manilaLocation)
+                return combined, nil
         }
 
         return time.Time{}, echo.NewHTTPError(http.StatusBadRequest, "Invalid docking time")
