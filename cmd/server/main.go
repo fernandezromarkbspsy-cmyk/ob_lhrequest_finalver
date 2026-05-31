@@ -2,17 +2,17 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
-	"html/template"
-	"io"
 	"log"
 	"os"
 	"os/signal"
-	"path/filepath"
 	"syscall"
 	"time"
 
+	"golang-dashboard/internal/cache"
 	"golang-dashboard/internal/database"
+	"golang-dashboard/internal/events"
 	"golang-dashboard/internal/models"
 	"golang-dashboard/internal/routes"
 
@@ -20,19 +20,6 @@ import (
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
 )
-
-type TemplateRenderer struct {
-	templates map[string]*template.Template
-}
-
-func (t *TemplateRenderer) Render(w io.Writer, name string, data interface{}, c echo.Context) error {
-	tmpl, ok := t.templates[name]
-	if !ok {
-		return fmt.Errorf("template %q is not registered", name)
-	}
-
-	return tmpl.ExecuteTemplate(w, name, data)
-}
 
 func main() {
 	_ = godotenv.Load()
@@ -42,7 +29,6 @@ func main() {
 	}
 
 	database.Connect()
-
 	if database.DB != nil {
 		database.DB.AutoMigrate(
 			&models.Cluster{},
@@ -52,25 +38,30 @@ func main() {
 		ensureWorkflowConstraints()
 	}
 
+	cache.Connect()
+
 	e := echo.New()
 	e.HideBanner = true
-
 	e.Use(middleware.Logger())
 	e.Use(middleware.Recover())
 
-	renderer := &TemplateRenderer{
-		templates: mustParseTemplates(),
-	}
-
-	e.Renderer = renderer
-	e.Static("/static", "web/static")
 	e.Static("/truck_label", "web/truck_label")
 
 	routes.RegisterRoutes(e)
 
+	// Production: serve built React SPA with SPA catch-all
+	distIndex := "web/dist/index.html"
+	if _, err := os.Stat(distIndex); err == nil {
+		e.Static("/assets", "web/dist/assets")
+		e.GET("/*", func(c echo.Context) error {
+			return c.File(distIndex)
+		})
+		log.Println("Serving React SPA from web/dist/")
+	}
+
 	port := os.Getenv("APP_PORT")
 	if port == "" {
-		port = "5000"
+		port = "8080"
 	}
 	host := os.Getenv("APP_HOST")
 	if host == "" {
@@ -78,7 +69,20 @@ func main() {
 	}
 
 	addr := host + ":" + port
-	log.Println("Server running on", addr)
+	log.Println("API server running on", addr)
+
+	// Redis SSE pub/sub: distribute events to this instance's local bus
+	serverCtx, serverCancel := context.WithCancel(context.Background())
+	defer serverCancel()
+	go func() {
+		ch := cache.Subscribe(serverCtx, cache.ChannelSSE)
+		for payload := range ch {
+			var ev events.Event
+			if err := json.Unmarshal([]byte(payload), &ev); err == nil {
+				events.DefaultBus.Publish(ev)
+			}
+		}
+	}()
 
 	go func() {
 		if err := e.Start(addr); err != nil {
@@ -130,39 +134,4 @@ END $$;
 	if err := database.DB.Exec(fmt.Sprintf(`ALTER TABLE users ADD CONSTRAINT users_role_check CHECK (role IN (%s))`, roles)).Error; err != nil {
 		log.Println("Unable to add user role constraint:", err)
 	}
-}
-
-func mustParseTemplates() map[string]*template.Template {
-	pages, err := filepath.Glob("web/templates/*.html")
-	if err != nil {
-		log.Fatal("Template discovery failed:", err)
-	}
-
-	templates := make(map[string]*template.Template)
-	layout := filepath.Join("web", "templates", "layout.html")
-
-	for _, page := range pages {
-		name := filepath.Base(page)
-		if name == "layout.html" {
-			continue
-		}
-
-		templates[name] = template.Must(template.New("layout.html").Funcs(template.FuncMap{
-			"assetVersion": assetVersion,
-			"add": func(a, b int64) int64 {
-				return a + b
-			},
-		}).ParseFiles(layout, page))
-	}
-
-	return templates
-}
-
-func assetVersion(path string) string {
-	info, err := os.Stat(path)
-	if err != nil {
-		return "dev"
-	}
-
-	return fmt.Sprintf("%d", info.ModTime().Unix())
 }

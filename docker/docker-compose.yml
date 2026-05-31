@@ -1,0 +1,68 @@
+version: "3.9"
+
+services:
+  # ─── Redis ────────────────────────────────────────────────
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    command: redis-server --maxmemory 256mb --maxmemory-policy allkeys-lru --save ""
+    volumes:
+      - redis_data:/data
+    networks:
+      - internal
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ─── Go API ───────────────────────────────────────────────
+  api:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    restart: unless-stopped
+    env_file: ../.env
+    environment:
+      APP_HOST: "0.0.0.0"
+      APP_PORT: "8080"
+      REDIS_URL: "redis:6379"
+    depends_on:
+      redis:
+        condition: service_healthy
+    networks:
+      - internal
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # ─── NGINX (serves React SPA + proxies /api) ──────────────
+  nginx:
+    image: nginx:1.27-alpine
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      # Uncomment for HTTPS (without Cloudflare full SSL offload):
+      # - "443:443"
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+      - ../web/frontend/dist:/usr/share/nginx/html:ro
+      # Uncomment for self-managed SSL certs:
+      # - /etc/letsencrypt:/etc/ssl:ro
+    depends_on:
+      api:
+        condition: service_healthy
+    networks:
+      - internal
+      - public
+
+volumes:
+  redis_data:
+
+networks:
+  internal:
+    driver: bridge
+  public:
+    driver: bridge

@@ -1,0 +1,62 @@
+// ── Color tokens ──────────────────────────────────────────────
+:root {
+  color-scheme: light;
+  --bg:        #f4f4f2;
+  --surface:   #ffffff;
+  --surface-2: #f7f7f5;
+  --soft:      #f1f1ee;
+  --line:      #dedbd4;
+  --line-2:    #ebe7df;
+  --text:      #1f1f1d;
+  --muted:     #7d776d;
+  --orange:    #ff7a1a;
+  --orange-2:  #ffd54d;
+  --green:     #36c988;
+  --mint:      #b6efcc;
+  --pink:      #ffafe2;
+  --red:       #f05252;
+  --red-soft:  #ffb4af;
+  --blue:      #4f86e8;
+  --brown:     #8c4c22;
+  --shadow:    0 1px 2px rgba(31, 31, 29, 0.06), 0 8px 24px rgba(31, 31, 29, 0.08);
+  --shadow-sm: 0 1px 3px rgba(31, 31, 29, 0.08);
+  --radius:    12px;
+  --radius-sm: 8px;
+  --radius-lg: 18px;
+}
+
+[data-theme='dark'] {
+  color-scheme: dark;
+  --bg:        #11110f;
+  --surface:   #1b1b18;
+  --surface-2: #22221f;
+  --soft:      #252520;
+  --line:      #33332e;
+  --line-2:    #2a2a26;
+  --text:      #f8f6f1;
+  --muted:     #a7a197;
+  --shadow:    0 1px 2px rgba(0, 0, 0, 0.32), 0 14px 38px rgba(0, 0, 0, 0.24);
+  --shadow-sm: 0 1px 4px rgba(0, 0, 0, 0.24);
+}
+
+// ── Sidebar palette (same light/dark) ─────────────────────────
+$sidebar-bg:        #3f3d38;
+$sidebar-bg-dark:   #2f2d29;
+$sidebar-text:      #f6f2eb;
+$sidebar-muted:     #c9c2b7;
+$sidebar-line:      rgba(255, 255, 255, 0.12);
+$sidebar-active:    rgba(255, 255, 255, 0.12);
+$sidebar-hover:     rgba(255, 255, 255, 0.06);
+$sidebar-width:     306px;
+$sidebar-collapsed: 68px;
+
+// ── Typography ────────────────────────────────────────────────
+$font-stack: 'Segoe UI Variable', 'Aptos', Inter, ui-sans-serif, system-ui,
+  -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+
+// ── Spacing ───────────────────────────────────────────────────
+$topbar-h: 56px;
+
+// ── Transitions ───────────────────────────────────────────────
+$transition-fast:   120ms ease;
+$transition-normal: 180ms ease;

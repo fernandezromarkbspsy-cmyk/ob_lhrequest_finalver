@@ -21,14 +21,6 @@ func RegisterRoutes(e *echo.Echo) {
 	e.POST("/api/login", handlers.LoginAPI, loginLimiter)
 	e.POST("/api/logout", handlers.LogoutAPI)
 
-	e.GET("/", handlers.Dashboard)
-	e.GET("/dashboard", handlers.Dashboard)
-	e.GET("/outbound/lh-request", handlers.LHRequests)
-	e.GET("/outbound/lh-requests", handlers.LHRequests)
-	e.GET("/midmile/truck-request", handlers.TruckRequests)
-	e.GET("/dock/officer", handlers.DockOfficer)
-	e.GET("/settings", handlers.Settings)
-
 	api := e.Group("/api", appauth.RequireAuth())
 	api.GET("/stats", handlers.StatsAPI)
 	api.GET("/events", handlers.EventsAPI)

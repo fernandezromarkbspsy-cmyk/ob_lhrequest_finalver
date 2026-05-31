@@ -1,1 +1,2 @@
 - [Security and Performance Fixes](security-and-perf-fixes.md) — Auth (JWT cookie), stats query collapse, timezone (Manila), TOCTOU fix, SSE replay, graceful shutdown.
+- [Full Stack Migration](full-stack-migration.md) — React+TS frontend, Redis caching, Docker/NGINX/Cloudflare configs, dual-workflow setup.
