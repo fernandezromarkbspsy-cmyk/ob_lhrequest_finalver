@@ -1008,6 +1008,8 @@ func redirectForRole(role string) string {
                 return "/midmile/truck-request"
         case "dock_officer", "doc_officer":
                 return "/dock/officer"
+        case "admin":
+                return "/dashboard"
         default:
                 return "/dashboard"
         }
