@@ -14,7 +14,7 @@ const STATUS_OPTIONS = [
 ]
 
 export default function TruckRequests() {
-  const [filter, setFilter] = useState<RequestsFilter>({ queue: 'midmile' })
+  const [filter, setFilter] = useState<RequestsFilter>({ queue: 'mm' })
   const { data, isLoading, refetch } = useRequests(filter)
   const actionMutation = useRequestAction()
 
