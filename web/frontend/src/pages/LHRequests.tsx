@@ -21,7 +21,7 @@ const STATUS_OPTIONS = [
 
 export default function LHRequests() {
   const user = useAuthStore((s) => s.user)
-  const [filter, setFilter] = useState<RequestsFilter>({ queue: 'outbound' })
+  const [filter, setFilter] = useState<RequestsFilter>({ queue: 'ops' })
   const { data, isLoading, refetch } = useRequests(filter)
   const { data: clusters } = useClusters()
 
