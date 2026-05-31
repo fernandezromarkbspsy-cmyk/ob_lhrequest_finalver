@@ -58,3 +58,8 @@ externalPort = 8080
 deploymentTarget = "autoscale"
 run = ["./server"]
 build = ["go", "build", "-o", "server", "./cmd/server"]
+
+[userenv]
+
+[userenv.shared]
+GITHUB_PAT = ""
