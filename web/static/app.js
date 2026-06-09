@@ -14,6 +14,8 @@
     perPage: 12,
     sortKey: "request_date",
     sortDirection: "desc",
+    inlineRequestOpen: false,
+    inlineRequestSaving: false,
     lastOps: Number(sessionStorage.getItem("last_ops_count") || 0),
     lastMM: Number(sessionStorage.getItem("last_mm_count") || 0),
     lastDock: Number(sessionStorage.getItem("last_dock_count") || 0),
@@ -22,14 +24,17 @@
   applyStoredTheme();
 
   document.addEventListener("DOMContentLoaded", () => {
+    applyDensity();
     applyRoleVisibility();
     bindNavigation();
     bindTopbar();
+    bindUserMenu();
     bindLogin();
     bindRequestsPage();
     bindSettingsPage();
     bindDashboard();
     bindNotifications();
+    bindRequestDetailModal();
     bindWorkflowEvents();
     bindNotificationAudioUnlock();
     bindTruckLabelModal();
@@ -144,11 +149,46 @@
         }
       }, 220));
     });
+
+    document.querySelectorAll("[data-density-toggle]").forEach((button) => {
+      button.addEventListener("click", () => {
+        const compact = !document.body.classList.contains("density-compact");
+        localStorage.setItem("soc5_density", compact ? "compact" : "comfortable");
+        applyDensity();
+        toast(compact ? "Compact density enabled" : "Comfortable density enabled");
+      });
+    });
+  }
+
+  function bindUserMenu() {
+    const menu = document.querySelector("[data-user-menu]");
+    const button = document.querySelector("[data-toggle-user-menu]");
+    const panel = document.querySelector("[data-user-menu-panel]");
+    if (!menu || !button || !panel) {
+      return;
+    }
+
+    button.addEventListener("click", () => {
+      const hidden = panel.classList.toggle("is-hidden");
+      button.setAttribute("aria-expanded", String(!hidden));
+    });
+
+    document.addEventListener("click", (event) => {
+      if (!menu.contains(event.target)) {
+        panel.classList.add("is-hidden");
+        button.setAttribute("aria-expanded", "false");
+      }
+    });
+  }
+
+  function applyDensity() {
+    document.body.classList.toggle("density-compact", localStorage.getItem("soc5_density") === "compact");
   }
 
   function applyStoredTheme() {
     const theme = localStorage.getItem(themeKey) || "light";
     const isDark = theme === "dark";
+    document.documentElement.classList.toggle("theme-dark", isDark);
     document.body.classList.toggle("theme-dark", isDark);
     document.querySelectorAll("[data-toggle-theme]").forEach((button) => {
       const label = isDark ? "Switch to light mode" : "Switch to dark mode";
@@ -222,13 +262,17 @@
       return;
     }
 
+    applyRequestURLFilters();
+    bindQuickFilters();
+    bindColumnControls();
+    applyColumnVisibility();
     fetchClusters();
     fetchRequests();
 
     const requestModal = document.querySelector("[data-request-modal]");
     const requestForm = document.querySelector("[data-request-form]");
     document.querySelectorAll("[data-open-request-modal]").forEach((button) => {
-      button.addEventListener("click", () => openRequestModal());
+      button.addEventListener("click", () => openInlineRequestRow());
     });
     document.querySelectorAll("[data-close-request-modal]").forEach((button) => {
       button.addEventListener("click", () => closeModal(requestModal));
@@ -271,6 +315,8 @@
       if (node) {
         node.addEventListener("input", debounce(() => {
           state.page = 1;
+          syncQuickFilters();
+          syncRequestURL();
           fetchRequests();
         }, 220));
       }
@@ -452,10 +498,170 @@
     addParam(params, "date_from", valueOf("[data-filter-from]"));
     addParam(params, "date_to", valueOf("[data-filter-to]"));
 
-    const response = await fetch("/api/requests?" + params.toString());
-    const body = await response.json().catch(() => ({ requests: [] }));
-    state.rows = Array.isArray(body.requests) ? body.requests : [];
-    renderTable();
+    setTableLoading(true);
+    try {
+      const response = await fetch("/api/requests?" + params.toString());
+      const body = await response.json().catch(() => ({ requests: [] }));
+      state.rows = Array.isArray(body.requests) ? body.requests : [];
+      renderTable();
+    } catch (_) {
+      state.rows = [];
+      renderTable();
+    } finally {
+      setTableLoading(false);
+    }
+  }
+
+  function applyRequestURLFilters() {
+    const params = new URLSearchParams(location.search);
+    const status = params.get("status");
+    const search = params.get("search");
+    const statusSelect = document.querySelector("[data-filter-status]");
+    const searchInput = document.querySelector("[data-filter-search]");
+    if (status && statusSelect) {
+      const hasOption = Array.from(statusSelect.options).some((option) => option.value === status);
+      if (hasOption) {
+        statusSelect.value = status;
+      }
+    }
+    if (search && searchInput) {
+      searchInput.value = search;
+    }
+    syncQuickFilters();
+  }
+
+  function bindQuickFilters() {
+    document.querySelectorAll("[data-status-filter]").forEach((button) => {
+      button.addEventListener("click", () => {
+        const status = button.getAttribute("data-status-filter") || "ALL";
+        const select = document.querySelector("[data-filter-status]");
+        if (select) {
+          select.value = status;
+        }
+        state.page = 1;
+        syncQuickFilters();
+        syncRequestURL();
+        fetchRequests();
+      });
+    });
+  }
+
+  function syncQuickFilters() {
+    const value = valueOf("[data-filter-status]") || "ALL";
+    document.querySelectorAll("[data-status-filter]").forEach((button) => {
+      button.classList.toggle("is-active", button.getAttribute("data-status-filter") === value);
+    });
+  }
+
+  function syncRequestURL() {
+    const params = new URLSearchParams(location.search);
+    const status = valueOf("[data-filter-status]");
+    const search = valueOf("[data-filter-search]");
+    if (status && status !== "ALL") {
+      params.set("status", status);
+    } else {
+      params.delete("status");
+    }
+    if (search) {
+      params.set("search", search);
+    } else {
+      params.delete("search");
+    }
+    const query = params.toString();
+    history.replaceState(null, "", location.pathname + (query ? "?" + query : ""));
+  }
+
+  function bindColumnControls() {
+    document.querySelectorAll("[data-column-toggle]").forEach((input) => {
+      input.addEventListener("change", () => {
+        const hidden = readHiddenColumns();
+        const key = input.getAttribute("data-column-toggle");
+        if (!key) {
+          return;
+        }
+        if (input.checked) {
+          hidden.delete(key);
+        } else {
+          hidden.add(key);
+        }
+        localStorage.setItem("soc5_hidden_columns", JSON.stringify(Array.from(hidden)));
+        applyColumnVisibility();
+      });
+    });
+  }
+
+  function readHiddenColumns() {
+    try {
+      return new Set(JSON.parse(localStorage.getItem("soc5_hidden_columns") || "[]"));
+    } catch (_) {
+      return new Set();
+    }
+  }
+
+  function applyColumnVisibility() {
+    const hidden = readHiddenColumns();
+    document.querySelectorAll("[data-column-toggle]").forEach((input) => {
+      const key = input.getAttribute("data-column-toggle");
+      input.checked = !hidden.has(key);
+    });
+    document.querySelectorAll(".table-panel").forEach((panel) => {
+      ["region", "dock", "backlogs", "driver", "trip"].forEach((key) => {
+        panel.classList.toggle(`hide-col-${key}`, hidden.has(key));
+      });
+    });
+  }
+
+  function setTableLoading(isLoading) {
+    document.querySelectorAll(".table-panel").forEach((panel) => {
+      panel.classList.toggle("is-loading", isLoading);
+    });
+    const tbody = document.querySelector("[data-request-table]");
+    if (isLoading && tbody && state.rows.length === 0) {
+      tbody.innerHTML = Array.from({ length: 6 }).map(() => (
+        `<tr class="skeleton-row"><td colspan="12"><span></span></td></tr>`
+      )).join("");
+    }
+  }
+
+  function renderRequestCards(rows) {
+    const list = document.querySelector("[data-request-cards]");
+    if (!list) {
+      return;
+    }
+    if (rows.length === 0) {
+      list.innerHTML = `<div class="empty-state">No requests found.</div>`;
+      return;
+    }
+    list.innerHTML = rows.map((row) => `
+      <article class="request-card">
+        <div class="request-card-head">
+          <div>
+            <strong>${escapeHTML(row.cluster || "-")}</strong>
+            <small>${escapeHTML(row.request_timestamp || "-")}</small>
+          </div>
+          <span class="status-pill ${escapeHTML(row.status || "")}">${escapeHTML(row.status_label || row.status || "-")}</span>
+        </div>
+        <dl>
+          <div><dt>Dock</dt><dd>${escapeHTML(row.dock_no || "-")}</dd></div>
+          <div><dt>Truck</dt><dd>${escapeHTML([row.truck_size, row.truck_type].filter(Boolean).join(" ") || "-")}</dd></div>
+          <div><dt>Plate</dt><dd>${escapeHTML(row.plate_number || "-")}</dd></div>
+          <div><dt>Driver</dt><dd>${escapeHTML(row.driver_id || "-")}</dd></div>
+        </dl>
+        ${renderActions(row)}
+      </article>
+    `).join("");
+    list.querySelectorAll("[data-row-action]").forEach((button) => {
+      button.addEventListener("click", () => openAction(button));
+    });
+    list.querySelectorAll("[data-edit-request]").forEach((button) => {
+      button.addEventListener("click", () => openRequestModal(rowByID(button.getAttribute("data-row-id"))));
+    });
+    list.querySelectorAll("[data-view-truck-label]").forEach((button) => {
+      button.addEventListener("click", () => openTruckLabel(rowByID(button.getAttribute("data-row-id"))));
+    });
+    list.querySelectorAll("[data-view-request-detail]").forEach((button) => {
+      button.addEventListener("click", () => openRequestDetail(rowByID(button.getAttribute("data-row-id"))));
+    });
   }
 
   function renderTable() {
@@ -471,10 +677,14 @@
     const visible = rows.slice(start, start + state.perPage);
 
     if (visible.length === 0) {
-      tbody.innerHTML = `<tr><td colspan="12" class="empty-state">No requests found.</td></tr>`;
+      tbody.innerHTML = state.inlineRequestOpen
+        ? renderInlineRequestRow()
+        : `<tr><td colspan="12" class="empty-state">No requests found.</td></tr>`;
     } else {
-      tbody.innerHTML = visible.map(renderRow).join("");
+      tbody.innerHTML = (state.inlineRequestOpen ? renderInlineRequestRow() : "") + visible.map(renderRow).join("");
     }
+
+    bindInlineRequestRow(tbody);
 
     tbody.querySelectorAll("[data-row-action]").forEach((button) => {
       button.addEventListener("click", () => openAction(button));
@@ -485,6 +695,11 @@
     tbody.querySelectorAll("[data-view-truck-label]").forEach((button) => {
       button.addEventListener("click", () => openTruckLabel(rowByID(button.getAttribute("data-row-id"))));
     });
+    tbody.querySelectorAll("[data-view-request-detail]").forEach((button) => {
+      button.addEventListener("click", () => openRequestDetail(rowByID(button.getAttribute("data-row-id"))));
+    });
+
+    renderRequestCards(visible);
 
     const label = document.querySelector("[data-page-label]");
     if (label) {
@@ -494,19 +709,19 @@
 
   function renderRow(row) {
     return `
-      <tr>
-        <td>${escapeHTML(row.request_timestamp || "-")}</td>
-        <td>${escapeHTML(row.cluster || "-")}</td>
-        <td>${escapeHTML(row.region || "-")}</td>
-        <td>${escapeHTML(row.dock_no || "-")}</td>
-        <td>${Number(row.backlogs || 0)}</td>
-        <td>${escapeHTML([row.truck_size, row.truck_type].filter(Boolean).join(" ") || "-")}</td>
-        <td>${escapeHTML(row.plate_number || "-")}</td>
-        <td>${escapeHTML(row.driver_id || "-")}</td>
-        <td>${escapeHTML(row.linehaul_trip_no || "-")}</td>
-        <td>${escapeHTML(row.docking_time || "-")}</td>
-        <td><span class="status-pill ${escapeHTML(row.status || "")}">${escapeHTML(row.status_label || row.status || "-")}</span></td>
-        <td>${renderActions(row)}</td>
+      <tr data-row-id="${Number(row.id)}">
+        <td data-col="requested">${escapeHTML(row.request_timestamp || "-")}</td>
+        <td data-col="cluster">${escapeHTML(row.cluster || "-")}</td>
+        <td data-col="region">${escapeHTML(row.region || "-")}</td>
+        <td data-col="dock">${escapeHTML(row.dock_no || "-")}</td>
+        <td data-col="backlogs">${Number(row.backlogs || 0)}</td>
+        <td data-col="truck">${escapeHTML([row.truck_size, row.truck_type].filter(Boolean).join(" ") || "-")}</td>
+        <td data-col="plate">${escapeHTML(row.plate_number || "-")}</td>
+        <td data-col="driver">${escapeHTML(row.driver_id || "-")}</td>
+        <td data-col="trip">${escapeHTML(row.linehaul_trip_no || "-")}</td>
+        <td data-col="docking">${escapeHTML(row.docking_time || "-")}</td>
+        <td data-col="status"><span class="status-pill ${escapeHTML(row.status || "")}">${escapeHTML(row.status_label || row.status || "-")}</span></td>
+        <td data-col="actions">${renderActions(row)}</td>
       </tr>
     `;
   }
@@ -536,9 +751,7 @@
       buttons.push(rowButton("printer", "View", `data-view-truck-label data-row-id="${id}"`));
     }
 
-    if (buttons.length === 0) {
-      return `<span class="muted">-</span>`;
-    }
+    buttons.unshift(rowButton("search", "Details", `data-view-request-detail data-row-id="${id}"`));
     return `<div class="row-actions">${buttons.join("")}</div>`;
   }
 
@@ -662,6 +875,196 @@
     }
   }
 
+  function openInlineRequestRow() {
+    state.inlineRequestOpen = true;
+    state.page = 1;
+    renderTable();
+    const row = document.querySelector("[data-inline-request-row]");
+    if (row) {
+      fillCurrentUserFields(row);
+      row.scrollIntoView({ block: "nearest", behavior: "smooth" });
+      const firstField = row.querySelector("[data-cluster-select]");
+      if (firstField) {
+        firstField.focus();
+      }
+    }
+  }
+
+  function closeInlineRequestRow() {
+    state.inlineRequestOpen = false;
+    state.inlineRequestSaving = false;
+    renderTable();
+  }
+
+  function renderInlineRequestRow() {
+    const formID = "inline-request-form";
+    const saving = state.inlineRequestSaving;
+    const disabled = saving ? "disabled" : "";
+    return `
+      <tr class="inline-request-row" data-inline-request-row>
+        <td data-col="requested">
+          <form id="${formID}" data-inline-request-form></form>
+          <input form="${formID}" type="hidden" name="cluster_id" data-cluster-id>
+          <span class="inline-request-chip">New</span>
+        </td>
+        <td data-col="cluster">
+          <select form="${formID}" name="cluster" required data-cluster-select ${disabled}>
+            ${clusterOptionsHTML()}
+          </select>
+        </td>
+        <td data-col="region"><input form="${formID}" name="region" required placeholder="Region" ${disabled}></td>
+        <td data-col="dock"><input form="${formID}" name="dock_no" required placeholder="Dock" ${disabled}></td>
+        <td data-col="backlogs"><input form="${formID}" name="backlogs" type="number" min="0" value="0" ${disabled}></td>
+        <td data-col="truck">
+          <div class="inline-truck-fields">
+            <select form="${formID}" name="truck_size" ${disabled}>
+              <option value="6WH">6WH</option>
+              <option value="6WF">6WF</option>
+              <option value="4WH">4WH</option>
+              <option value="10WH">10WH</option>
+            </select>
+            <input form="${formID}" name="truck_type" placeholder="Type" ${disabled}>
+          </div>
+        </td>
+        <td data-col="plate" class="muted">-</td>
+        <td data-col="driver" class="muted">-</td>
+        <td data-col="trip" class="muted">-</td>
+        <td data-col="docking" class="muted">-</td>
+        <td data-col="status"><span class="status-pill PENDING_OPS">Draft</span></td>
+        <td data-col="actions">
+          <div class="row-actions">
+            <button type="submit" form="${formID}" ${disabled}><span class="ui-icon icon-check" aria-hidden="true"></span><span>${saving ? "Saving" : "Create"}</span></button>
+            <button type="button" data-cancel-inline-request ${disabled}><span class="ui-icon icon-close" aria-hidden="true"></span><span>Cancel</span></button>
+          </div>
+        </td>
+      </tr>
+    `;
+  }
+
+  function bindInlineRequestRow(root) {
+    const row = root.querySelector("[data-inline-request-row]");
+    const form = root.querySelector("[data-inline-request-form]");
+    if (!row || !form) {
+      return;
+    }
+
+    const clusterSelect = row.querySelector("[data-cluster-select]");
+    if (clusterSelect) {
+      clusterSelect.addEventListener("change", () => populateClusterFields(row));
+    }
+
+    row.querySelectorAll("[data-cancel-inline-request]").forEach((button) => {
+      button.addEventListener("click", closeInlineRequestRow);
+    });
+
+    form.addEventListener("submit", async (event) => {
+      event.preventDefault();
+      if (state.inlineRequestSaving) {
+        return;
+      }
+
+      const payload = formToObject(form);
+      state.inlineRequestSaving = true;
+      renderTable();
+      try {
+        const response = await fetch("/api/requests", jsonOptions(payload));
+        const body = await response.json().catch(() => ({}));
+        if (!response.ok) {
+          throw new Error(body.message || "Unable to create request");
+        }
+
+        state.inlineRequestOpen = false;
+        toast("Request created");
+        await fetchRequests();
+        updateStats();
+        refreshRequestTrend();
+      } catch (error) {
+        toast(error.message);
+      } finally {
+        state.inlineRequestSaving = false;
+        renderTable();
+      }
+    });
+  }
+
+  function clusterOptionsHTML() {
+    return `<option value="">Select cluster</option>` + state.clusters.map((item, index) => (
+      `<option value="${escapeHTML(item.cluster)}" data-cluster-index="${index}">${escapeHTML(item.cluster)}</option>`
+    )).join("");
+  }
+
+  function bindRequestDetailModal() {
+    const modal = document.querySelector("[data-request-detail-modal]");
+    document.querySelectorAll("[data-close-request-detail]").forEach((button) => {
+      button.addEventListener("click", () => closeModal(modal));
+    });
+  }
+
+  function openRequestDetail(row) {
+    const modal = document.querySelector("[data-request-detail-modal]");
+    const title = document.querySelector("[data-detail-title]");
+    const status = document.querySelector("[data-detail-status]");
+    const grid = document.querySelector("[data-detail-grid]");
+    const timeline = document.querySelector("[data-detail-timeline]");
+    if (!modal || !row || !grid || !timeline) {
+      return;
+    }
+
+    if (title) {
+      title.textContent = row.cluster || "Linehaul Request";
+    }
+    if (status) {
+      status.className = `status-pill ${escapeHTML(row.status || "")}`;
+      status.textContent = row.status_label || row.status || "-";
+    }
+
+    const details = [
+      ["Requested", row.request_timestamp],
+      ["Region", row.region],
+      ["Dock", row.dock_no],
+      ["Backlogs", row.backlogs],
+      ["Truck", [row.truck_size, row.truck_type].filter(Boolean).join(" ")],
+      ["Plate", row.plate_number],
+      ["Driver", row.driver_id],
+      ["Trip No.", row.linehaul_trip_no],
+      ["Docking Time", row.docking_time],
+      ["Ops PIC", row.ob_ops_pic],
+      ["FTE Ops", row.ob_fte],
+      ["FTE MM", row.midmile_fte],
+      ["Remarks", row.remarks],
+    ];
+
+    grid.innerHTML = details.map(([label, value]) => `
+      <div>
+        <span>${escapeHTML(label)}</span>
+        <strong>${escapeHTML(value || "-")}</strong>
+      </div>
+    `).join("");
+
+    timeline.innerHTML = buildTimeline(row).map((item) => `
+      <div class="timeline-item ${item.done ? "is-done" : ""}">
+        <i></i>
+        <span>${escapeHTML(item.label)}</span>
+        <strong>${escapeHTML(item.value || item.state)}</strong>
+      </div>
+    `).join("");
+
+    openModal(modal);
+  }
+
+  function buildTimeline(row) {
+    const order = ["PENDING_OPS", "PENDING_MM", "ASSIGNED", "FOR_DOCKING", "DOCKED"];
+    const currentIndex = Math.max(0, order.indexOf(row.status || "PENDING_OPS"));
+    return [
+      { label: "Created", state: "Requested", value: row.request_timestamp, done: true },
+      { label: "Ops Approval", state: "Pending Ops", value: row.ob_fte || "", done: currentIndex >= 1 || row.status === "REJECTED" },
+      { label: "Midmile Assignment", state: "Pending MM", value: row.midmile_fte || "", done: currentIndex >= 2 },
+      { label: "Plate Assigned", state: "For Docking", value: row.plate_number || "", done: currentIndex >= 3 },
+      { label: "Docked", state: "Docked", value: row.docking_time || "", done: currentIndex >= 4 },
+      { label: "Exception", state: "Rejected/Canceled", value: row.remarks || "", done: row.status === "REJECTED" || row.status === "CANCELED" },
+    ];
+  }
+
   function bindDashboard() {
     if (document.querySelector("[data-request-trend]")) {
       refreshRequestTrend();
@@ -769,13 +1172,37 @@
   }
 
   function bindNotifications() {
+    const drawer = document.querySelector("[data-notification-drawer]");
+    const scrim = document.querySelector("[data-notification-scrim]");
+    const close = () => {
+      if (drawer) {
+        drawer.classList.add("is-hidden");
+      }
+      if (scrim) {
+        scrim.classList.add("is-hidden");
+      }
+      document.querySelectorAll("[data-open-notifications]").forEach((button) => {
+        button.setAttribute("aria-expanded", "false");
+      });
+    };
+
     document.querySelectorAll("[data-open-notifications]").forEach((button) => {
       button.addEventListener("click", async () => {
         await unlockNotificationAudio();
         clearNotificationAlert();
         persistNotificationCounts(readUser());
-        const count = Number(document.querySelector("[data-notification-count]")?.textContent || 0);
-        toast(count > 0 ? `${count} active queue alert${count === 1 ? "" : "s"}` : "No active queue alerts");
+        if (drawer && scrim) {
+          drawer.classList.toggle("is-hidden");
+          scrim.classList.toggle("is-hidden");
+          button.setAttribute("aria-expanded", String(!drawer.classList.contains("is-hidden")));
+        }
+      });
+    });
+
+    document.querySelectorAll("[data-close-notifications], [data-notification-scrim], [data-clear-notifications]").forEach((node) => {
+      node.addEventListener("click", () => {
+        clearNotificationAlert();
+        close();
       });
     });
   }
@@ -856,6 +1283,13 @@
       setText("[data-stat-rejected]", stats.rejected || 0);
       setText("[data-stat-open-alerts]", ops + mm + dock);
       setNotificationCount(ops + mm + dock);
+      renderDashboardWidgets({
+        ops,
+        mm,
+        dock,
+        confirmed: Number(stats.confirmed_trucks || 0),
+        rejected: Number(stats.rejected || 0),
+      });
 
       const currentUser = readUser();
       if (currentUser && currentUser.role === "fte_ops" && ops > state.lastOps) {
@@ -907,6 +1341,31 @@
     });
   }
 
+  function renderDashboardWidgets(stats) {
+    const total = Math.max(1, stats.ops + stats.mm + stats.dock + stats.rejected);
+    const ops = (stats.ops / total) * 100;
+    const mm = (stats.mm / total) * 100;
+    const dock = (stats.dock / total) * 100;
+    document.querySelectorAll("[data-status-donut] .donut-chart").forEach((node) => {
+      node.style.background = `conic-gradient(var(--gt-warning) 0 ${ops}%, var(--gt-info) ${ops}% ${ops + mm}%, var(--gt-success) ${ops + mm}% ${ops + mm + dock}%, var(--gt-danger) ${ops + mm + dock}% 100%)`;
+    });
+
+    const workloadMax = Math.max(1, stats.ops, stats.mm, stats.dock);
+    document.querySelectorAll("[data-workload-bars] a").forEach((row) => {
+      const value = Number(row.querySelector("strong")?.textContent || 0);
+      row.style.setProperty("--bar", `${Math.max(4, (value / workloadMax) * 100)}%`);
+    });
+
+    const score = Math.round((stats.confirmed / Math.max(1, stats.confirmed + stats.ops + stats.mm + stats.dock + stats.rejected)) * 100);
+    document.querySelectorAll("[data-sla-score]").forEach((node) => {
+      node.textContent = `${score}%`;
+      const ring = node.closest(".sla-ring");
+      if (ring) {
+        ring.style.setProperty("--score", `${score}%`);
+      }
+    });
+  }
+
   function triggerNotificationAlert(message) {
     chime();
     toast(message);
@@ -925,16 +1384,20 @@
   }
 
   async function fetchClusters() {
-    const select = document.querySelector("[data-cluster-select]");
-    if (!select) {
+    const selects = document.querySelectorAll("[data-cluster-select]");
+    if (selects.length === 0) {
       return;
     }
     const response = await fetch("/api/clusters");
     const clusters = await response.json().catch(() => []);
     state.clusters = Array.isArray(clusters) ? clusters : [];
-    select.innerHTML = `<option value="">Select cluster</option>` + state.clusters.map((item, index) => (
-      `<option value="${escapeHTML(item.cluster)}" data-cluster-index="${index}">${escapeHTML(item.cluster)}</option>`
-    )).join("");
+    document.querySelectorAll("[data-cluster-select]").forEach((select) => {
+      const currentValue = select.value;
+      select.innerHTML = clusterOptionsHTML();
+      if (currentValue) {
+        select.value = currentValue;
+      }
+    });
   }
 
   function populateClusterFields(form) {
@@ -947,9 +1410,9 @@
     const index = option ? Number(option.getAttribute("data-cluster-index")) : -1;
     const cluster = Number.isInteger(index) && index >= 0 ? state.clusters[index] : null;
     const clusterID = form.querySelector("[data-cluster-id]");
-    const region = form.elements.region;
-    const dockNo = form.elements.dock_no;
-    const backlogs = form.elements.backlogs;
+    const region = form.elements ? form.elements.region : form.querySelector(`[name="region"]`);
+    const dockNo = form.elements ? form.elements.dock_no : form.querySelector(`[name="dock_no"]`);
+    const backlogs = form.elements ? form.elements.backlogs : form.querySelector(`[name="backlogs"]`);
 
     if (clusterID) {
       clusterID.value = cluster ? cluster.id || "" : "";

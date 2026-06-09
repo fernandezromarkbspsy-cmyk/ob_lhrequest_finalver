@@ -22,6 +22,14 @@
 </section>
 
 <section class="panel table-panel">
+  <div class="quick-filter-tabs" data-quick-filters>
+    <button type="button" class="is-active" data-status-filter="ALL">All</button>
+    <button type="button" data-status-filter="PENDING_MM">Approved</button>
+    <button type="button" data-status-filter="ASSIGNED">Assigned</button>
+    <button type="button" data-status-filter="FOR_DOCKING">Docking</button>
+    <button type="button" data-status-filter="DOCKED">Docked</button>
+    <button type="button" data-status-filter="REJECTED">Exceptions</button>
+  </div>
   <div class="table-toolbar">
     <label class="search-field">
       <span>Search</span>
@@ -47,6 +55,17 @@
         <option value="REJECTED">Rejected</option>
       </select>
     </label>
+    <div class="table-view-controls">
+      <button class="ghost-button compact" type="button" data-density-toggle><span class="ui-icon icon-dashboard" aria-hidden="true"></span><span>Density</span></button>
+      <details class="column-menu" data-column-menu>
+        <summary class="ghost-button compact">Columns</summary>
+        <label><input type="checkbox" data-column-toggle="region" checked> Region</label>
+        <label><input type="checkbox" data-column-toggle="dock" checked> Dock</label>
+        <label><input type="checkbox" data-column-toggle="backlogs" checked> Backlogs</label>
+        <label><input type="checkbox" data-column-toggle="driver" checked> Driver</label>
+        <label><input type="checkbox" data-column-toggle="trip" checked> Trip No.</label>
+      </details>
+    </div>
   </div>
 
   <div class="data-table-wrap">
@@ -91,6 +110,7 @@
       </tbody>
     </table>
   </div>
+  <div class="request-card-list" data-request-cards></div>
   <div class="pagination-row">
     <button class="ghost-button compact" type="button" data-page-prev><span class="ui-icon icon-arrow-left" aria-hidden="true"></span><span>Previous</span></button>
     <span data-page-label>Page 1</span>

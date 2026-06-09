@@ -10,21 +10,21 @@
     <p>Monitor request volume, handoffs, docking readiness, and exceptions from one working view.</p>
   </div>
   <div class="command-metrics">
-    <div>
+    <a href="/outbound/lh-request" data-drilldown-status="ALL">
       <span>Today</span>
       <strong data-stat-total-today>{{.Stats.TotalToday}}</strong>
       <small>Requests created</small>
-    </div>
-    <div>
+    </a>
+    <a href="/midmile/truck-request?status=ASSIGNED" data-drilldown-status="ASSIGNED">
       <span>Active Flow</span>
       <strong data-stat-confirmed-trucks>{{.Stats.ConfirmedTrucks}}</strong>
       <small>Assigned, docking, or docked</small>
-    </div>
-    <div>
+    </a>
+    <a href="/outbound/lh-request?status=PENDING_OPS" data-drilldown-status="PENDING_OPS">
       <span>Open Alerts</span>
       <strong data-stat-open-alerts>{{add .Stats.PendingOps (add .Stats.PendingMM .Stats.ForDocking)}}</strong>
       <small>Needs team action</small>
-    </div>
+    </a>
   </div>
 </section>
 
@@ -86,6 +86,57 @@
       </a>
     </div>
   </aside>
+</section>
+
+<section class="dashboard-widget-grid">
+  <article class="panel chart-widget">
+    <div class="panel-heading">
+      <div>
+        <h2>Status Breakdown</h2>
+        <p>Active work by workflow state</p>
+      </div>
+    </div>
+    <div class="donut-widget" data-status-donut>
+      <div class="donut-chart" aria-hidden="true"></div>
+      <div class="donut-legend">
+        <a href="/outbound/lh-request?status=PENDING_OPS"><i class="pending-color"></i><span>Ops</span><strong data-stat-pending-ops>{{.Stats.PendingOps}}</strong></a>
+        <a href="/midmile/truck-request?status=PENDING_MM"><i class="blue-color"></i><span>Midmile</span><strong data-stat-pending-mm>{{.Stats.PendingMM}}</strong></a>
+        <a href="/dock/officer?status=FOR_DOCKING"><i class="requested-color"></i><span>Dock</span><strong data-stat-for-docking>{{.Stats.ForDocking}}</strong></a>
+        <a href="/outbound/lh-request?status=REJECTED"><i class="rejected-color"></i><span>Exceptions</span><strong data-stat-rejected>{{.Stats.Rejected}}</strong></a>
+      </div>
+    </div>
+  </article>
+
+  <article class="panel chart-widget">
+    <div class="panel-heading">
+      <div>
+        <h2>Team Workload</h2>
+        <p>Open queue distribution</p>
+      </div>
+    </div>
+    <div class="workload-bars" data-workload-bars>
+      <a href="/outbound/lh-request?status=PENDING_OPS" style="--value: {{.Stats.PendingOps}}"><span>Ops</span><i></i><strong data-stat-pending-ops>{{.Stats.PendingOps}}</strong></a>
+      <a href="/midmile/truck-request?status=PENDING_MM" style="--value: {{.Stats.PendingMM}}"><span>Midmile</span><i></i><strong data-stat-pending-mm>{{.Stats.PendingMM}}</strong></a>
+      <a href="/dock/officer?status=FOR_DOCKING" style="--value: {{.Stats.ForDocking}}"><span>Dock</span><i></i><strong data-stat-for-docking>{{.Stats.ForDocking}}</strong></a>
+    </div>
+  </article>
+
+  <article class="panel chart-widget">
+    <div class="panel-heading">
+      <div>
+        <h2>Approval SLA</h2>
+        <p>Operational attention indicator</p>
+      </div>
+    </div>
+    <div class="sla-meter" data-sla-meter>
+      <div class="sla-ring"><strong data-sla-score>0%</strong><span>Ready</span></div>
+      <div class="sla-notes">
+        <span><i class="status-dot FOR_DOCKING"></i>Confirmed flow</span>
+        <span><i class="status-dot PENDING_OPS"></i>Open approval</span>
+        <span><i class="status-dot REJECTED"></i>Exceptions</span>
+      </div>
+    </div>
+  </article>
 </section>
 
 <section class="dashboard-lower-grid">

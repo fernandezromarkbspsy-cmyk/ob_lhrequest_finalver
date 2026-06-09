@@ -6,6 +6,16 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>{{.Title}} | SOC 5 Outbound</title>
   <link rel="stylesheet" href="/static/app.css?v={{assetVersion "web/static/app.css"}}">
+  <link rel="stylesheet" href="/static/gentelella.css?v={{assetVersion "web/static/gentelella.css"}}">
+  <script>
+    (function () {
+      try {
+        if (localStorage.getItem("soc5_theme") === "dark") {
+          document.documentElement.classList.add("theme-dark");
+        }
+      } catch (_) {}
+    })();
+  </script>
   <script defer src="/static/app.js?v={{assetVersion "web/static/app.js"}}"></script>
 </head>
 
@@ -119,7 +129,10 @@
           <button class="icon-button mobile-only" type="button" data-toggle-sidebar title="Toggle sidebar" aria-label="Toggle sidebar">
             <span class="ui-icon icon-menu" aria-hidden="true"></span>
           </button>
-          <h1>{{.Title}}</h1>
+          <div>
+            <span class="topbar-kicker">Gentelella Admin</span>
+            <h1>{{.Title}}</h1>
+          </div>
         </div>
 
         <div class="topbar-actions">
@@ -130,7 +143,7 @@
           <button class="icon-button" type="button" data-toggle-theme title="Switch to dark mode" aria-label="Switch to dark mode">
             <span class="ui-icon icon-theme" aria-hidden="true"></span>
           </button>
-          <button class="notification-button" type="button" data-open-notifications title="Notifications" aria-label="Notifications">
+          <button class="notification-button" type="button" data-open-notifications title="Notifications" aria-label="Notifications" aria-expanded="false">
             <span class="ui-icon icon-bell" aria-hidden="true"></span>
             <strong data-notification-count>{{add .PendingOps (add .PendingMM .PendingDock)}}</strong>
           </button>
@@ -138,12 +151,20 @@
             <span class="ui-icon icon-wifi" aria-hidden="true"></span>
             Live Connected
           </span>
-          <div class="topbar-user">
-            <span class="avatar small user-avatar" data-user-initials>T</span>
-            <span>
-              <strong data-user-name>Test Ops PIC</strong>
-              <small data-user-role>Ops PIC</small>
-            </span>
+          <div class="topbar-user user-menu" data-user-menu>
+            <button class="user-menu-button" type="button" data-toggle-user-menu aria-expanded="false">
+              <span class="avatar small user-avatar" data-user-initials>T</span>
+              <span>
+                <strong data-user-name>Test Ops PIC</strong>
+                <small data-user-role>Ops PIC</small>
+              </span>
+              <span class="ui-icon icon-chevron-down" aria-hidden="true"></span>
+            </button>
+            <div class="user-menu-panel is-hidden" data-user-menu-panel>
+              <button type="button" data-toggle-theme><span class="ui-icon icon-theme" aria-hidden="true"></span><span>Toggle theme</span></button>
+              <button type="button" data-density-toggle><span class="ui-icon icon-dashboard" aria-hidden="true"></span><span>Toggle density</span></button>
+              <button type="button" data-logout><span class="ui-icon icon-logout" aria-hidden="true"></span><span>Logout</span></button>
+            </div>
           </div>
           <button class="primary-button compact" type="button" data-open-login><span class="ui-icon icon-login" aria-hidden="true"></span><span>Login</span></button>
         </div>
@@ -156,6 +177,56 @@
   </div>
 
   <div class="toast-region" data-toast-region aria-live="polite"></div>
+
+  <aside class="notification-drawer is-hidden" data-notification-drawer aria-label="Notifications">
+    <div class="drawer-header">
+      <div>
+        <p class="eyebrow">Queue Alerts</p>
+        <h2>Notifications</h2>
+      </div>
+      <button class="icon-button" type="button" data-close-notifications aria-label="Close notifications">
+        <span class="ui-icon icon-close" aria-hidden="true"></span>
+      </button>
+    </div>
+    <div class="drawer-alerts">
+      <a href="/outbound/lh-request?status=PENDING_OPS" class="drawer-alert">
+        <span class="status-dot PENDING_OPS"></span>
+        <span><strong>Ops approval</strong><small data-ops-pending-count>{{.PendingOps}}</small></span>
+      </a>
+      <a href="/midmile/truck-request?status=PENDING_MM" class="drawer-alert">
+        <span class="status-dot PENDING_MM"></span>
+        <span><strong>Midmile handoff</strong><small data-mm-pending-count>{{.PendingMM}}</small></span>
+      </a>
+      <a href="/dock/officer?status=FOR_DOCKING" class="drawer-alert">
+        <span class="status-dot FOR_DOCKING"></span>
+        <span><strong>Docking queue</strong><small data-dock-pending-count>{{.PendingDock}}</small></span>
+      </a>
+    </div>
+    <div class="drawer-footer">
+      <button class="ghost-button compact" type="button" data-clear-notifications><span class="ui-icon icon-check" aria-hidden="true"></span><span>Mark read</span></button>
+    </div>
+  </aside>
+  <div class="drawer-scrim is-hidden" data-notification-scrim></div>
+
+  <div class="modal-backdrop is-hidden" data-request-detail-modal>
+    <section class="dialog detail-dialog" role="dialog" aria-modal="true" aria-labelledby="detail-title">
+      <button class="icon-button modal-close" type="button" data-close-request-detail aria-label="Close request details">
+        <span class="ui-icon icon-close" aria-hidden="true"></span>
+      </button>
+      <div class="panel-heading">
+        <div>
+          <p class="eyebrow">Request Detail</p>
+          <h2 id="detail-title" data-detail-title>Linehaul Request</h2>
+        </div>
+        <span class="status-pill" data-detail-status>Pending</span>
+      </div>
+      <div class="detail-grid" data-detail-grid></div>
+      <div class="timeline-panel">
+        <h3>Workflow Timeline</h3>
+        <div class="workflow-timeline" data-detail-timeline></div>
+      </div>
+    </section>
+  </div>
 
   <div class="modal-backdrop {{if not .ShowLogin}}is-hidden{{end}}" data-login-modal>
     <section class="login-modal" role="dialog" aria-modal="true" aria-labelledby="login-title">
