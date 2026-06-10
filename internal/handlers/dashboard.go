@@ -1,7 +1,15 @@
 package handlers
 
 import (
+	"crypto/hmac"
+	"crypto/rand"
+	"crypto/sha256"
+	"encoding/base64"
+	"encoding/json"
+	"fmt"
+	"math/big"
 	"net/http"
+	"os"
 	"strconv"
 	"strings"
 	"time"
@@ -12,17 +20,19 @@ import (
 
 	"github.com/labstack/echo/v4"
 	qrcode "github.com/skip2/go-qrcode"
+	"golang.org/x/crypto/bcrypt"
+	"gorm.io/gorm"
 )
 
 const (
-	StatusPendingOps = "PENDING_OPS"
-	StatusPendingMM  = "PENDING_MM"
-	StatusAssigned   = "ASSIGNED"
-	StatusForDocking = "FOR_DOCKING"
-	StatusDocked     = "DOCKED"
-	StatusConfirmed  = "CONFIRMED"
-	StatusCanceled   = "CANCELED"
-	StatusRejected   = "REJECTED"
+	StatusPending      = "PENDING"
+	StatusApproved     = "APPROVED"
+	StatusAssigned     = "ASSIGNED"
+	StatusForDocking   = "FOR_DOCKING"
+	StatusDocked       = "DOCKED"
+	StatusConfirmed    = "CONFIRMED"
+	StatusCancelled    = "CANCELLED"
+	StatusRejectedByMM = "REJECTED_BY_MM"
 )
 
 type RequestRow struct {
@@ -65,6 +75,17 @@ type loginPayload struct {
 	LoginType string `json:"login_type" form:"login_type"`
 	Email     string `json:"email" form:"email"`
 	OpsID     string `json:"ops_id" form:"ops_id"`
+	Password  string `json:"password" form:"password"`
+}
+
+type otpPayload struct {
+	Email string `json:"email" form:"email"`
+	Code  string `json:"code" form:"code"`
+}
+
+type changePasswordPayload struct {
+	CurrentPassword string `json:"current_password" form:"current_password"`
+	NewPassword     string `json:"new_password" form:"new_password"`
 }
 
 type requestPayload struct {
@@ -90,76 +111,8 @@ type userPayload struct {
 	Role      string `json:"role" form:"role"`
 	Email     string `json:"email" form:"email"`
 	OpsID     string `json:"ops_id" form:"ops_id"`
+	Password  string `json:"password" form:"password"`
 	ActorRole string `json:"actor_role" form:"actor_role"`
-	IsActive  bool   `json:"is_active" form:"is_active"`
-}
-
-func Dashboard(c echo.Context) error {
-	data := map[string]interface{}{
-		"Title":       "Dashboard",
-		"ActiveMenu":  "dashboard",
-		"Stats":       loadStats(),
-		"RecentRows":  loadRecentRows(8),
-		"PendingOps":  pendingCount(StatusPendingOps),
-		"PendingMM":   pendingCount(StatusPendingMM),
-		"PendingDock": pendingCount(StatusForDocking),
-	}
-
-	return c.Render(http.StatusOK, "dashboard.html", data)
-}
-
-func LHRequests(c echo.Context) error {
-	data := map[string]interface{}{
-		"Title":       "LH Request",
-		"ActiveMenu":  "lh-request",
-		"Queue":       "ops",
-		"Requests":    loadRequestRows(""),
-		"PendingOps":  pendingCount(StatusPendingOps),
-		"PendingMM":   pendingCount(StatusPendingMM),
-		"PendingDock": pendingCount(StatusForDocking),
-	}
-
-	return c.Render(http.StatusOK, "lh_requests.html", data)
-}
-
-func TruckRequests(c echo.Context) error {
-	data := map[string]interface{}{
-		"Title":       "Truck Request",
-		"ActiveMenu":  "truck-request",
-		"Queue":       "mm",
-		"Requests":    loadRequestRows(""),
-		"PendingOps":  pendingCount(StatusPendingOps),
-		"PendingMM":   pendingCount(StatusPendingMM),
-		"PendingDock": pendingCount(StatusForDocking),
-	}
-
-	return c.Render(http.StatusOK, "truck_requests.html", data)
-}
-
-func DockOfficer(c echo.Context) error {
-	data := map[string]interface{}{
-		"Title":       "Dock Officer",
-		"ActiveMenu":  "dock-officer",
-		"Queue":       "dock",
-		"Requests":    loadRequestRows("dock"),
-		"PendingOps":  pendingCount(StatusPendingOps),
-		"PendingMM":   pendingCount(StatusPendingMM),
-		"PendingDock": pendingCount(StatusForDocking),
-	}
-
-	return c.Render(http.StatusOK, "dock_officer.html", data)
-}
-
-func Settings(c echo.Context) error {
-	data := map[string]interface{}{
-		"Title":       "Settings",
-		"ActiveMenu":  "settings",
-		"PendingOps":  pendingCount(StatusPendingOps),
-		"PendingMM":   pendingCount(StatusPendingMM),
-		"PendingDock": pendingCount(StatusForDocking),
-	}
-
-	return c.Render(http.StatusOK, "settings.html", data)
 }
 
 func LoginAPI(c echo.Context) error {
@@ -177,7 +130,7 @@ func LoginAPI(c echo.Context) error {
 	}
 
 	user := models.User{}
-	query := database.DB.Where("is_active = ?", true)
+	query := database.DB.Model(&models.User{}).Where("is_active = ?", true)
 
 	switch loginType {
 	case "fte":
@@ -185,9 +138,8 @@ func LoginAPI(c echo.Context) error {
 			return echo.NewHTTPError(http.StatusBadRequest, "Email is required")
 		}
 		query = query.Where(
-			"LOWER(COALESCE(email, '')) = LOWER(?) AND (is_fte = ? OR role IN ?)",
+			"LOWER(COALESCE(email, '')) = LOWER(?) AND role IN ?",
 			email,
-			true,
 			[]string{"fte_ops", "fte_mm"},
 		)
 	case "backroom":
@@ -195,10 +147,9 @@ func LoginAPI(c echo.Context) error {
 			return echo.NewHTTPError(http.StatusBadRequest, "Ops ID is required")
 		}
 		query = query.Where(
-			"LOWER(COALESCE(ops_id, '')) = LOWER(?) AND (is_fte = ? OR role IN ?)",
+			"LOWER(COALESCE(ops_id, '')) = LOWER(?) AND role IN ?",
 			opsID,
-			false,
-			[]string{"ops_pic", "dock_officer", "doc_officer", "data_team", "admin"},
+			[]string{"ops_pic", "dock_officer", "doc_officer"},
 		)
 	default:
 		return echo.NewHTTPError(http.StatusBadRequest, "Choose FTE or Backroom")
@@ -207,16 +158,184 @@ func LoginAPI(c echo.Context) error {
 	if err := query.First(&user).Error; err != nil {
 		return echo.NewHTTPError(http.StatusUnauthorized, "Invalid credentials")
 	}
+	ensureUserUniqueID(&user)
+	if user.PasswordHash != nil && *user.PasswordHash != "" {
+		if err := bcrypt.CompareHashAndPassword([]byte(*user.PasswordHash), []byte(payload.Password)); err != nil {
+			return echo.NewHTTPError(http.StatusUnauthorized, "Invalid credentials")
+		}
+	}
 
-	return c.JSON(http.StatusOK, map[string]interface{}{
+	response := map[string]interface{}{
 		"id":       user.ID,
 		"name":     user.Name,
 		"role":     user.Role,
 		"email":    user.Email,
 		"ops_id":   user.OpsID,
-		"is_fte":   user.IsFTE,
+		"is_fte":   isFTERole(user.Role),
 		"redirect": redirectForRole(user.Role),
+	}
+	setSessionCookie(c, user)
+	return c.JSON(http.StatusOK, response)
+}
+
+func LogoutAPI(c echo.Context) error {
+	c.SetCookie(&http.Cookie{
+		Name:     "soc5_token",
+		Value:    "",
+		Path:     "/",
+		MaxAge:   -1,
+		HttpOnly: true,
+		SameSite: http.SameSiteLaxMode,
+		Secure:   os.Getenv("APP_ENV") == "production",
 	})
+	return c.JSON(http.StatusOK, map[string]bool{"ok": true})
+}
+
+func MeAPI(c echo.Context) error {
+	claims, ok := readSessionClaims(c)
+	if !ok {
+		return echo.NewHTTPError(http.StatusUnauthorized, "Not signed in")
+	}
+	return c.JSON(http.StatusOK, claims)
+}
+
+func SendOTPAPI(c echo.Context) error {
+	if database.DB == nil {
+		return echo.NewHTTPError(http.StatusServiceUnavailable, "Database is not configured")
+	}
+
+	payload := otpPayload{}
+	if err := c.Bind(&payload); err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, "Invalid OTP payload")
+	}
+	email := strings.TrimSpace(payload.Email)
+	if email == "" {
+		return echo.NewHTTPError(http.StatusBadRequest, "Email is required")
+	}
+
+	var count int64
+	database.DB.Model(&models.User{}).
+		Where("LOWER(COALESCE(email, '')) = LOWER(?) AND role IN ? AND is_active = ?", email, []string{"fte_ops", "fte_mm"}, true).
+		Count(&count)
+	if count == 0 {
+		return echo.NewHTTPError(http.StatusUnauthorized, "Invalid email")
+	}
+
+	code, err := randomOTP()
+	if err != nil {
+		return echo.NewHTTPError(http.StatusInternalServerError, "Unable to generate OTP")
+	}
+	codeHash, err := hashPassword(code)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusInternalServerError, "Unable to store OTP")
+	}
+
+	otp := models.UserOTP{
+		Email:     email,
+		CodeHash:  codeHash,
+		ExpiresAt: time.Now().Add(10 * time.Minute),
+	}
+	if err := database.DB.Create(&otp).Error; err != nil {
+		return echo.NewHTTPError(http.StatusInternalServerError, "Unable to store OTP")
+	}
+	if os.Getenv("APP_ENV") != "production" {
+		fmt.Printf("OTP for %s: %s\n", email, code)
+	}
+
+	return c.JSON(http.StatusOK, map[string]interface{}{"ok": true, "expires_in_seconds": 600})
+}
+
+func VerifyOTPAPI(c echo.Context) error {
+	if database.DB == nil {
+		return echo.NewHTTPError(http.StatusServiceUnavailable, "Database is not configured")
+	}
+
+	payload := otpPayload{}
+	if err := c.Bind(&payload); err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, "Invalid OTP payload")
+	}
+	email := strings.TrimSpace(payload.Email)
+	code := strings.TrimSpace(payload.Code)
+	if email == "" || code == "" {
+		return echo.NewHTTPError(http.StatusBadRequest, "Email and OTP are required")
+	}
+
+	otp := models.UserOTP{}
+	if err := database.DB.
+		Where("LOWER(email) = LOWER(?) AND used_at IS NULL AND expires_at > ?", email, time.Now()).
+		Order("created_at desc, id desc").
+		First(&otp).Error; err != nil {
+		return echo.NewHTTPError(http.StatusUnauthorized, "Invalid OTP")
+	}
+	if err := bcrypt.CompareHashAndPassword([]byte(otp.CodeHash), []byte(code)); err != nil {
+		return echo.NewHTTPError(http.StatusUnauthorized, "Invalid OTP")
+	}
+
+	user := models.User{}
+	if err := database.DB.
+		Where("LOWER(COALESCE(email, '')) = LOWER(?) AND role IN ? AND is_active = ?", email, []string{"fte_ops", "fte_mm"}, true).
+		First(&user).Error; err != nil {
+		return echo.NewHTTPError(http.StatusUnauthorized, "Invalid email")
+	}
+
+	now := time.Now()
+	database.DB.Model(&otp).Update("used_at", &now)
+	ensureUserUniqueID(&user)
+	setSessionCookie(c, user)
+	return c.JSON(http.StatusOK, map[string]interface{}{
+		"id":        user.ID,
+		"unique_id": user.UniqueID,
+		"name":      user.Name,
+		"role":      user.Role,
+		"email":     user.Email,
+		"is_fte":    user.IsFTE,
+		"redirect":  redirectForRole(user.Role),
+	})
+}
+
+func ChangePasswordAPI(c echo.Context) error {
+	if database.DB == nil {
+		return echo.NewHTTPError(http.StatusServiceUnavailable, "Database is not configured")
+	}
+
+	claims, ok := readSessionClaims(c)
+	if !ok {
+		return echo.NewHTTPError(http.StatusUnauthorized, "Not signed in")
+	}
+	userID, ok := numericClaim(claims["id"])
+	if !ok {
+		return echo.NewHTTPError(http.StatusUnauthorized, "Invalid session")
+	}
+
+	payload := changePasswordPayload{}
+	if err := c.Bind(&payload); err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, "Invalid password payload")
+	}
+	if strings.TrimSpace(payload.NewPassword) == "" {
+		return echo.NewHTTPError(http.StatusBadRequest, "New password is required")
+	}
+
+	user := models.User{}
+	if err := database.DB.First(&user, userID).Error; err != nil {
+		return echo.NewHTTPError(http.StatusNotFound, "User not found")
+	}
+	if user.PasswordHash != nil && *user.PasswordHash != "" {
+		if err := bcrypt.CompareHashAndPassword([]byte(*user.PasswordHash), []byte(payload.CurrentPassword)); err != nil {
+			return echo.NewHTTPError(http.StatusUnauthorized, "Invalid current password")
+		}
+	}
+
+	passwordHash, err := hashPassword(payload.NewPassword)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, "Password is invalid")
+	}
+	user.PasswordHash = stringPtr(passwordHash)
+	user.FirstTimeLogin = false
+	if err := database.DB.Save(&user).Error; err != nil {
+		return echo.NewHTTPError(http.StatusInternalServerError, "Unable to change password")
+	}
+
+	return c.JSON(http.StatusOK, map[string]bool{"ok": true})
 }
 
 func StatsAPI(c echo.Context) error {
@@ -225,6 +344,8 @@ func StatsAPI(c echo.Context) error {
 		"total_today":      stats.TotalToday,
 		"pending_ops":      stats.PendingOps,
 		"pending_mm":       stats.PendingMM,
+		"pending":          stats.PendingOps,
+		"approved":         stats.PendingMM,
 		"for_docking":      stats.ForDocking,
 		"confirmed_trucks": stats.ConfirmedTrucks,
 		"rejected":         stats.Rejected,
@@ -251,6 +372,48 @@ func RequestsAPI(c echo.Context) error {
 	})
 }
 
+func RequestAPI(c echo.Context) error {
+	if database.DB == nil {
+		return echo.NewHTTPError(http.StatusServiceUnavailable, "Database is not configured")
+	}
+
+	id, err := strconv.Atoi(c.Param("id"))
+	if err != nil || id <= 0 {
+		return echo.NewHTTPError(http.StatusBadRequest, "Invalid request ID")
+	}
+
+	request := models.Request{}
+	if err := database.DB.First(&request, id).Error; err != nil {
+		return echo.NewHTTPError(http.StatusNotFound, "Request not found")
+	}
+
+	return c.JSON(http.StatusOK, requestToRow(request))
+}
+
+func RequestEventsAPI(c echo.Context) error {
+	if database.DB == nil {
+		return echo.NewHTTPError(http.StatusServiceUnavailable, "Database is not configured")
+	}
+
+	id, err := strconv.Atoi(c.Param("id"))
+	if err != nil || id <= 0 {
+		return echo.NewHTTPError(http.StatusBadRequest, "Invalid request ID")
+	}
+
+	events := []models.RequestEvent{}
+	if err := database.DB.
+		Where("request_id = ?", id).
+		Order("created_at asc, id asc").
+		Find(&events).Error; err != nil {
+		return echo.NewHTTPError(http.StatusInternalServerError, "Unable to load request events")
+	}
+
+	return c.JSON(http.StatusOK, map[string]interface{}{
+		"events": events,
+		"count":  len(events),
+	})
+}
+
 func CreateRequestAPI(c echo.Context) error {
 	payload := requestPayload{}
 	if err := c.Bind(&payload); err != nil {
@@ -262,17 +425,17 @@ func CreateRequestAPI(c echo.Context) error {
 	dockNo := strings.TrimSpace(payload.DockNo)
 	backlogs := payload.Backlogs
 
+	var backlogsTS *time.Time
+
 	if database.DB != nil && payload.ClusterID > 0 {
-		cluster := clusterRecord{}
-		if err := database.DB.Table("clusters").
-			Select("id, cluster_name, region, COALESCE(dock_number, '') AS dock_number, COALESCE(backlogs, 0) AS backlogs").
-			Where("id = ? AND active IS DISTINCT FROM ?", payload.ClusterID, false).
-			First(&cluster).Error; err != nil {
+		cluster, err := lookupCluster(payload.ClusterID)
+		if err != nil {
 			return echo.NewHTTPError(http.StatusBadRequest, "Invalid cluster")
 		}
 		clusterName = strings.TrimSpace(cluster.ClusterName)
 		region = strings.TrimSpace(cluster.Region)
 		backlogs = cluster.Backlogs
+		backlogsTS = cluster.BacklogsTS
 		if dockNo == "" {
 			dockNo = strings.TrimSpace(cluster.DockNumber)
 		}
@@ -289,10 +452,11 @@ func CreateRequestAPI(c echo.Context) error {
 		Region:           region,
 		DockNo:           dockNo,
 		Backlogs:         backlogs,
+		BacklogsTS:       backlogsTS,
 		TruckSize:        strings.TrimSpace(payload.TruckSize),
 		TruckType:        strings.TrimSpace(payload.TruckType),
 		OBOpsPIC:         strings.TrimSpace(payload.OBOpsPIC),
-		Status:           StatusPendingOps,
+		Status:           StatusPending,
 	}
 
 	if database.DB == nil {
@@ -311,11 +475,11 @@ func CreateRequestAPI(c echo.Context) error {
 
 func EditRequestAPI(c echo.Context) error {
 	return updateRequest(c, "edit", func(request *models.Request, payload requestPayload, now time.Time) {
-		if request.Status != StatusPendingOps && request.Status != StatusRejected && request.Status != "" {
+		if request.Status != StatusPending && request.Status != StatusRejectedByMM && request.Status != "" {
 			return
 		}
 
-		clusterName, region, dockNo, backlogs, ok := requestDetailsFromPayload(payload)
+		clusterName, region, dockNo, backlogs, backlogsTS, ok := requestDetailsFromPayload(payload)
 		if !ok {
 			return
 		}
@@ -324,6 +488,7 @@ func EditRequestAPI(c echo.Context) error {
 		request.Region = region
 		request.DockNo = dockNo
 		request.Backlogs = backlogs
+		request.BacklogsTS = backlogsTS
 		request.TruckSize = strings.TrimSpace(payload.TruckSize)
 		request.TruckType = strings.TrimSpace(payload.TruckType)
 		request.OBOpsPIC = strings.TrimSpace(payload.OBOpsPIC)
@@ -333,48 +498,49 @@ func EditRequestAPI(c echo.Context) error {
 
 func CancelRequestAPI(c echo.Context) error {
 	return updateRequest(c, "cancel", func(request *models.Request, payload requestPayload, now time.Time) {
-		request.Status = StatusCanceled
+		request.Status = StatusCancelled
 		request.RejectionRemarks = strings.TrimSpace(payload.Remarks)
 		request.RejectedAt = &now
 	})
 }
 
 type clusterRecord struct {
-	ID          uint   `gorm:"column:id"`
-	ClusterName string `gorm:"column:cluster_name"`
-	Region      string `gorm:"column:region"`
-	DockNumber  string `gorm:"column:dock_number"`
-	Backlogs    int    `gorm:"column:backlogs"`
+	ID          uint       `gorm:"column:id"`
+	ClusterName string     `gorm:"column:cluster_name"`
+	HubName     string     `gorm:"column:hub_name"`
+	Region      string     `gorm:"column:region"`
+	DockNumber  string     `gorm:"column:dock_number"`
+	Backlogs    int        `gorm:"column:backlogs"`
+	BacklogsTS  *time.Time `gorm:"column:backlogs_ts"`
 }
 
-func requestDetailsFromPayload(payload requestPayload) (string, string, string, int, bool) {
+func requestDetailsFromPayload(payload requestPayload) (string, string, string, int, *time.Time, bool) {
 	clusterName := strings.TrimSpace(payload.Cluster)
 	region := strings.TrimSpace(payload.Region)
 	dockNo := strings.TrimSpace(payload.DockNo)
 	backlogs := payload.Backlogs
+	var backlogsTS *time.Time
 
 	if database.DB != nil && payload.ClusterID > 0 {
-		cluster := clusterRecord{}
-		if err := database.DB.Table("clusters").
-			Select("id, cluster_name, region, COALESCE(dock_number, '') AS dock_number, COALESCE(backlogs, 0) AS backlogs").
-			Where("id = ? AND active IS DISTINCT FROM ?", payload.ClusterID, false).
-			First(&cluster).Error; err != nil {
-			return "", "", "", 0, false
+		cluster, err := lookupCluster(payload.ClusterID)
+		if err != nil {
+			return "", "", "", 0, nil, false
 		}
 		clusterName = strings.TrimSpace(cluster.ClusterName)
 		region = strings.TrimSpace(cluster.Region)
 		backlogs = cluster.Backlogs
+		backlogsTS = cluster.BacklogsTS
 		if dockNo == "" {
 			dockNo = strings.TrimSpace(cluster.DockNumber)
 		}
 	}
 
-	return clusterName, region, dockNo, backlogs, clusterName != "" && region != "" && dockNo != ""
+	return clusterName, region, dockNo, backlogs, backlogsTS, clusterName != "" && region != "" && dockNo != ""
 }
 
 func ApproveRequestAPI(c echo.Context) error {
 	return updateRequest(c, "approve", func(request *models.Request, payload requestPayload, now time.Time) {
-		request.Status = StatusPendingMM
+		request.Status = StatusApproved
 		request.OBFTE = strings.TrimSpace(payload.OBFTE)
 		request.ApprovedAt = &now
 	})
@@ -382,7 +548,7 @@ func ApproveRequestAPI(c echo.Context) error {
 
 func RejectRequestAPI(c echo.Context) error {
 	return updateRequest(c, "reject", func(request *models.Request, payload requestPayload, now time.Time) {
-		request.Status = StatusRejected
+		request.Status = StatusRejectedByMM
 		request.RejectionRemarks = strings.TrimSpace(payload.Remarks)
 		request.RejectedAt = &now
 	})
@@ -420,16 +586,66 @@ func DockRequestAPI(c echo.Context) error {
 }
 
 func ConfirmRequestAPI(c echo.Context) error {
-	return ForDockingRequestAPI(c)
+	return updateRequest(c, "confirm", func(request *models.Request, payload requestPayload, now time.Time) {
+		request.Status = StatusConfirmed
+		request.ConfirmedAt = &now
+	})
+}
+
+type bulkApprovePayload struct {
+	IDs   []uint `json:"ids" form:"ids"`
+	OBFTE string `json:"ob_fte" form:"ob_fte"`
+}
+
+func BulkApproveRequestsAPI(c echo.Context) error {
+	if database.DB == nil {
+		return echo.NewHTTPError(http.StatusServiceUnavailable, "Database is not configured")
+	}
+
+	payload := bulkApprovePayload{}
+	if err := c.Bind(&payload); err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, "Invalid bulk approve payload")
+	}
+	if len(payload.IDs) == 0 {
+		return echo.NewHTTPError(http.StatusBadRequest, "Request IDs are required")
+	}
+
+	now := time.Now()
+	requests := []models.Request{}
+	if err := database.DB.Where("id IN ? AND status IN ?", payload.IDs, []string{StatusPending, StatusRejectedByMM}).Find(&requests).Error; err != nil {
+		return echo.NewHTTPError(http.StatusInternalServerError, "Unable to load requests")
+	}
+
+	for i := range requests {
+		previousStatus := normalizeStatus(requests[i])
+		requests[i].Status = StatusApproved
+		requests[i].OBFTE = strings.TrimSpace(payload.OBFTE)
+		requests[i].ApprovedAt = &now
+		if err := database.DB.Save(&requests[i]).Error; err != nil {
+			return echo.NewHTTPError(http.StatusInternalServerError, "Unable to approve requests")
+		}
+		publishRequestEvent(events.RequestApproved, "approve", previousStatus, requests[i])
+	}
+
+	rows := make([]RequestRow, 0, len(requests))
+	for _, request := range requests {
+		rows = append(rows, requestToRow(request))
+	}
+	return c.JSON(http.StatusOK, map[string]interface{}{
+		"requests": rows,
+		"count":    len(rows),
+	})
 }
 
 func ClustersAPI(c echo.Context) error {
 	type clusterOption struct {
-		ID       uint   `json:"id"`
-		Cluster  string `json:"cluster"`
-		Region   string `json:"region"`
-		DockNo   string `json:"dock_no"`
-		Backlogs int    `json:"backlogs"`
+		ID        uint   `json:"id"`
+		Cluster   string `json:"cluster"`
+		HubName   string `json:"hub_name"`
+		Region    string `json:"region"`
+		DockNo    string `json:"dock_no"`
+		Backlogs  int    `json:"backlogs"`
+		BacklogTS string `json:"backlogs_ts"`
 	}
 
 	options := []clusterOption{}
@@ -438,27 +654,32 @@ func ClustersAPI(c echo.Context) error {
 	}
 
 	clusters := []clusterRecord{}
-	if err := database.DB.Table("clusters").
-		Select("id, cluster_name, region, COALESCE(dock_number, '') AS dock_number, COALESCE(backlogs, 0) AS backlogs").
-		Where("active IS DISTINCT FROM ? AND COALESCE(cluster_name, '') <> ''", false).
-		Order("cluster_name asc, region asc, dock_number asc").
+	if err := clusterLookupQuery().
+		Where("COALESCE(cluster_name, '') <> ''").
+		Order("cluster_name asc, hub_name asc, region asc, dock_number asc").
 		Find(&clusters).Error; err != nil {
 		return echo.NewHTTPError(http.StatusInternalServerError, "Unable to load clusters")
 	}
 
 	seen := map[string]bool{}
 	for _, cluster := range clusters {
-		key := cluster.ClusterName + "|" + cluster.Region + "|" + cluster.DockNumber
+		key := cluster.ClusterName + "|" + cluster.HubName + "|" + cluster.Region + "|" + cluster.DockNumber
 		if seen[key] {
 			continue
 		}
 		seen[key] = true
+		backlogsTS := ""
+		if cluster.BacklogsTS != nil {
+			backlogsTS = cluster.BacklogsTS.Format(time.RFC3339)
+		}
 		options = append(options, clusterOption{
-			ID:       cluster.ID,
-			Cluster:  cluster.ClusterName,
-			Region:   cluster.Region,
-			DockNo:   cluster.DockNumber,
-			Backlogs: cluster.Backlogs,
+			ID:        cluster.ID,
+			Cluster:   cluster.ClusterName,
+			HubName:   cluster.HubName,
+			Region:    cluster.Region,
+			DockNo:    cluster.DockNumber,
+			Backlogs:  cluster.Backlogs,
+			BacklogTS: backlogsTS,
 		})
 	}
 
@@ -479,12 +700,52 @@ func DriverQRAPI(c echo.Context) error {
 	return c.Blob(http.StatusOK, "image/png", png)
 }
 
+func NotificationsAPI(c echo.Context) error {
+	if database.DB == nil {
+		return echo.NewHTTPError(http.StatusServiceUnavailable, "Database is not configured")
+	}
+
+	role := normalizeRole(c.QueryParam("role"))
+	query := database.DB.Model(&models.Notification{})
+	if role != "" {
+		query = query.Where("role = ?", role)
+	}
+
+	notifications := []models.Notification{}
+	if err := query.Order("created_at desc, id desc").Limit(100).Find(&notifications).Error; err != nil {
+		return echo.NewHTTPError(http.StatusInternalServerError, "Unable to load notifications")
+	}
+
+	return c.JSON(http.StatusOK, map[string]interface{}{
+		"notifications": notifications,
+		"count":         len(notifications),
+	})
+}
+
+func ReadNotificationAPI(c echo.Context) error {
+	if database.DB == nil {
+		return echo.NewHTTPError(http.StatusServiceUnavailable, "Database is not configured")
+	}
+
+	id, err := strconv.Atoi(c.Param("id"))
+	if err != nil || id <= 0 {
+		return echo.NewHTTPError(http.StatusBadRequest, "Invalid notification ID")
+	}
+
+	now := time.Now()
+	if err := database.DB.Model(&models.Notification{}).Where("id = ?", id).Update("read_at", &now).Error; err != nil {
+		return echo.NewHTTPError(http.StatusInternalServerError, "Unable to mark notification as read")
+	}
+
+	return c.JSON(http.StatusOK, map[string]interface{}{"id": id, "read_at": now})
+}
+
 func CreateUserAPI(c echo.Context) error {
 	if database.DB == nil {
 		return echo.NewHTTPError(http.StatusServiceUnavailable, "Database is not configured")
 	}
 
-	payload := userPayload{IsActive: true}
+	payload := userPayload{}
 	if err := c.Bind(&payload); err != nil {
 		return echo.NewHTTPError(http.StatusBadRequest, "Invalid user payload")
 	}
@@ -527,15 +788,34 @@ func CreateUserAPI(c echo.Context) error {
 		IsFTE:    isFTE,
 		IsActive: true,
 	}
+	ensureUserUniqueID(&user)
 	if isFTE {
 		user.Email = stringPtr(email)
 	} else {
 		user.OpsID = stringPtr(opsID)
 	}
+	if passwordHash, err := hashPassword(payload.Password); err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, "Password is invalid")
+	} else if passwordHash != "" {
+		user.PasswordHash = stringPtr(passwordHash)
+	}
 
 	if err := database.DB.Create(&user).Error; err != nil {
 		return echo.NewHTTPError(http.StatusInternalServerError, "Unable to create user")
 	}
+
+	events.DefaultBus.Publish(events.Event{
+		ID:          strconv.FormatInt(time.Now().UnixNano(), 10),
+		Type:        events.UserCreated,
+		OccurredAt:  time.Now(),
+		Aggregate:   "user",
+		AggregateID: user.ID,
+		Action:      "create",
+		Payload: map[string]interface{}{
+			"name": user.Name,
+			"role": user.Role,
+		},
+	})
 
 	return c.JSON(http.StatusCreated, map[string]interface{}{
 		"id":         user.ID,
@@ -547,6 +827,142 @@ func CreateUserAPI(c echo.Context) error {
 		"is_fte":     user.IsFTE,
 		"is_active":  user.IsActive,
 	})
+}
+
+func UsersAPI(c echo.Context) error {
+	if database.DB == nil {
+		return echo.NewHTTPError(http.StatusServiceUnavailable, "Database is not configured")
+	}
+
+	users := []models.User{}
+	if err := database.DB.Order("created_at desc, id desc").Find(&users).Error; err != nil {
+		return echo.NewHTTPError(http.StatusInternalServerError, "Unable to load users")
+	}
+
+	return c.JSON(http.StatusOK, map[string]interface{}{
+		"users": users,
+		"count": len(users),
+	})
+}
+
+func UpdateUserAPI(c echo.Context) error {
+	if database.DB == nil {
+		return echo.NewHTTPError(http.StatusServiceUnavailable, "Database is not configured")
+	}
+
+	id, err := strconv.Atoi(c.Param("id"))
+	if err != nil || id <= 0 {
+		return echo.NewHTTPError(http.StatusBadRequest, "Invalid user ID")
+	}
+
+	payload := userPayload{}
+	if err := c.Bind(&payload); err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, "Invalid user payload")
+	}
+	if !canManageRoles(payload.ActorRole) {
+		return echo.NewHTTPError(http.StatusForbidden, "Only FTE Ops and FTE MM can update users")
+	}
+
+	user := models.User{}
+	if err := database.DB.First(&user, id).Error; err != nil {
+		return echo.NewHTTPError(http.StatusNotFound, "User not found")
+	}
+
+	name := strings.TrimSpace(payload.Name)
+	role := normalizeRole(payload.Role)
+	email := strings.TrimSpace(payload.Email)
+	opsID := strings.TrimSpace(payload.OpsID)
+	isFTE := isFTERole(role)
+
+	if name == "" || role == "" {
+		return echo.NewHTTPError(http.StatusBadRequest, "Name and valid role are required")
+	}
+	if isFTE && email == "" {
+		return echo.NewHTTPError(http.StatusBadRequest, "Email is required for FTE roles")
+	}
+	if !isFTE && opsID == "" {
+		return echo.NewHTTPError(http.StatusBadRequest, "Ops ID is required for Backroom roles")
+	}
+
+	user.Name = name
+	user.Role = role
+	user.IsFTE = isFTE
+	if isFTE {
+		user.Email = stringPtr(email)
+		user.OpsID = nil
+	} else {
+		user.OpsID = stringPtr(opsID)
+		user.Email = nil
+	}
+	if passwordHash, err := hashPassword(payload.Password); err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, "Password is invalid")
+	} else if passwordHash != "" {
+		user.PasswordHash = stringPtr(passwordHash)
+	}
+
+	if err := database.DB.Save(&user).Error; err != nil {
+		return echo.NewHTTPError(http.StatusInternalServerError, "Unable to update user")
+	}
+
+	events.DefaultBus.Publish(events.Event{
+		ID:          strconv.FormatInt(time.Now().UnixNano(), 10),
+		Type:        events.UserUpdated,
+		OccurredAt:  time.Now(),
+		Aggregate:   "user",
+		AggregateID: user.ID,
+		Action:      "update",
+		Payload: map[string]interface{}{
+			"name": user.Name,
+			"role": user.Role,
+		},
+	})
+
+	return c.JSON(http.StatusOK, user)
+}
+
+func DisableUserAPI(c echo.Context) error {
+	if database.DB == nil {
+		return echo.NewHTTPError(http.StatusServiceUnavailable, "Database is not configured")
+	}
+
+	id, err := strconv.Atoi(c.Param("id"))
+	if err != nil || id <= 0 {
+		return echo.NewHTTPError(http.StatusBadRequest, "Invalid user ID")
+	}
+
+	payload := userPayload{}
+	_ = c.Bind(&payload)
+	if !canManageRoles(payload.ActorRole) {
+		return echo.NewHTTPError(http.StatusForbidden, "Only FTE Ops and FTE MM can disable users")
+	}
+
+	if err := database.DB.Model(&models.User{}).Where("id = ?", id).Update("is_active", false).Error; err != nil {
+		return echo.NewHTTPError(http.StatusInternalServerError, "Unable to disable user")
+	}
+
+	events.DefaultBus.Publish(events.Event{
+		ID:          strconv.FormatInt(time.Now().UnixNano(), 10),
+		Type:        events.UserDisabled,
+		OccurredAt:  time.Now(),
+		Aggregate:   "user",
+		AggregateID: uint(id),
+		Action:      "disable",
+	})
+
+	return c.JSON(http.StatusOK, map[string]interface{}{"id": id, "is_active": false})
+}
+
+func clusterLookupQuery() *gorm.DB {
+	return database.DB.Table("clusters").
+		Select("id, cluster_name, COALESCE(hub_name, '') AS hub_name, region, COALESCE(dock_number, '') AS dock_number, COALESCE(backlogs, 0) AS backlogs, backlogs_ts")
+}
+
+func lookupCluster(id uint) (clusterRecord, error) {
+	cluster := clusterRecord{}
+	err := clusterLookupQuery().
+		Where("id = ?", id).
+		First(&cluster).Error
+	return cluster, err
 }
 
 func updateRequest(c echo.Context, action string, mutate func(*models.Request, requestPayload, time.Time)) error {
@@ -572,21 +988,64 @@ func updateRequest(c echo.Context, action string, mutate func(*models.Request, r
 	previousStatus := normalizeStatus(request)
 	mutate(&request, payload, time.Now())
 
+	if err := validateRequestAction(action, request); err != nil {
+		return err
+	}
+
 	if err := database.DB.Save(&request).Error; err != nil {
 		return echo.NewHTTPError(http.StatusInternalServerError, "Unable to update request")
 	}
 
-	eventType := events.RequestUpdated
-	if normalizeStatus(request) != previousStatus {
-		eventType = events.RequestStatusChanged
-	}
+	eventType := requestEventTypeForAction(action)
 	publishRequestEvent(eventType, action, previousStatus, request)
 
 	return c.JSON(http.StatusOK, requestToRow(request))
 }
 
+func validateRequestAction(action string, request models.Request) error {
+	switch action {
+	case "reject", "cancel":
+		if strings.TrimSpace(request.RejectionRemarks) == "" {
+			return echo.NewHTTPError(http.StatusBadRequest, "Remarks are required")
+		}
+	case "for-docking":
+		if strings.TrimSpace(request.PlateNumber) == "" {
+			return echo.NewHTTPError(http.StatusBadRequest, "Plate number is required")
+		}
+	case "dock":
+		if strings.TrimSpace(request.DriverID) == "" || strings.TrimSpace(request.LinehaulTripNo) == "" {
+			return echo.NewHTTPError(http.StatusBadRequest, "Driver ID and LH Trip Number are required")
+		}
+	}
+	return nil
+}
+
 func publishRequestEvent(eventType, action, previousStatus string, request models.Request) {
 	status := normalizeStatus(request)
+	payload := map[string]interface{}{
+		"cluster":           request.Cluster,
+		"region":            request.Region,
+		"dock_no":           request.DockNo,
+		"plate_number":      request.PlateNumber,
+		"linehaul_trip_no":  request.LinehaulTripNo,
+		"request_timestamp": formatTime(request.RequestTimestamp),
+	}
+
+	if database.DB != nil {
+		payloadJSON, _ := json.Marshal(payload)
+		eventRecord := models.RequestEvent{
+			RequestID:      request.ID,
+			EventType:      eventType,
+			Action:         action,
+			Status:         status,
+			PreviousStatus: previousStatus,
+			Payload:        payloadJSON,
+		}
+		if err := database.DB.Create(&eventRecord).Error; err == nil {
+			createNotifications(eventType, request)
+		}
+	}
+
 	events.DefaultBus.Publish(events.Event{
 		ID:             strconv.FormatInt(time.Now().UnixNano(), 10),
 		Type:           eventType,
@@ -596,15 +1055,84 @@ func publishRequestEvent(eventType, action, previousStatus string, request model
 		Action:         action,
 		Status:         status,
 		PreviousStatus: previousStatus,
-		Payload: map[string]interface{}{
-			"cluster":           request.Cluster,
-			"region":            request.Region,
-			"dock_no":           request.DockNo,
-			"plate_number":      request.PlateNumber,
-			"linehaul_trip_no":  request.LinehaulTripNo,
-			"request_timestamp": formatTime(request.RequestTimestamp),
-		},
+		Payload:        payload,
 	})
+}
+
+func requestEventTypeForAction(action string) string {
+	switch action {
+	case "create":
+		return events.RequestCreated
+	case "approve":
+		return events.RequestApproved
+	case "edit":
+		return events.RequestEdited
+	case "cancel":
+		return events.RequestCancelled
+	case "reject":
+		return events.RequestRejectedByMM
+	case "assign":
+		return events.TruckAssigned
+	case "for-docking":
+		return events.TruckForDocking
+	case "dock":
+		return events.TruckDocked
+	case "confirm":
+		return events.RequestConfirmed
+	default:
+		return events.RequestEdited
+	}
+}
+
+func createNotifications(eventType string, request models.Request) {
+	roles := notificationRoles(eventType)
+	if len(roles) == 0 {
+		return
+	}
+
+	message := notificationMessage(eventType, request)
+	notifications := make([]models.Notification, 0, len(roles))
+	for _, role := range roles {
+		notifications = append(notifications, models.Notification{
+			Role:      role,
+			RequestID: request.ID,
+			EventType: eventType,
+			Message:   message,
+		})
+	}
+	database.DB.Create(&notifications)
+}
+
+func notificationRoles(eventType string) []string {
+	switch eventType {
+	case events.RequestCreated, events.RequestRejectedByMM:
+		return []string{"fte_ops"}
+	case events.RequestApproved:
+		return []string{"fte_mm"}
+	case events.TruckAssigned, events.TruckForDocking:
+		return []string{"dock_officer", "doc_officer"}
+	case events.RequestConfirmed:
+		return []string{"fte_ops", "fte_mm"}
+	default:
+		return nil
+	}
+}
+
+func notificationMessage(eventType string, request models.Request) string {
+	switch eventType {
+	case events.RequestCreated:
+		return "New linehaul request needs FTE Ops review: " + request.Cluster
+	case events.RequestApproved:
+		return "Approved request needs Midmile truck action: " + request.Cluster
+	case events.RequestRejectedByMM:
+		return "Request was rejected by Midmile: " + request.Cluster
+	case events.TruckAssigned, events.TruckForDocking:
+		return "Truck is ready for dock action: " + request.Cluster
+	case events.RequestConfirmed:
+		return "Request confirmed: " + request.Cluster
+	default:
+		return "Request updated: " + request.Cluster
+	}
 }
 
 func canManageRoles(role string) bool {
@@ -614,7 +1142,7 @@ func canManageRoles(role string) bool {
 
 func normalizeRole(role string) string {
 	switch strings.ToLower(strings.TrimSpace(role)) {
-	case "fte_ops", "fte_mm", "ops_pic", "data_team", "admin", "dock_officer":
+	case "fte_ops", "fte_mm", "ops_pic", "dock_officer":
 		return strings.ToLower(strings.TrimSpace(role))
 	case "doc_officer":
 		return "dock_officer"
@@ -651,6 +1179,144 @@ func stringPtr(value string) *string {
 	return &value
 }
 
+func hashPassword(password string) (string, error) {
+	password = strings.TrimSpace(password)
+	if password == "" {
+		return "", nil
+	}
+	hash, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
+	if err != nil {
+		return "", err
+	}
+	return string(hash), nil
+}
+
+func randomOTP() (string, error) {
+	max := big.NewInt(1000000)
+	value, err := rand.Int(rand.Reader, max)
+	if err != nil {
+		return "", err
+	}
+	return fmt.Sprintf("%06d", value.Int64()), nil
+}
+
+func numericClaim(value interface{}) (uint, bool) {
+	switch typed := value.(type) {
+	case float64:
+		return uint(typed), typed > 0
+	case int:
+		return uint(typed), typed > 0
+	case uint:
+		return typed, typed > 0
+	default:
+		return 0, false
+	}
+}
+
+func ensureUserUniqueID(user *models.User) {
+	if strings.TrimSpace(user.UniqueID) != "" {
+		return
+	}
+	prefix := "BR"
+	if isFTERole(user.Role) {
+		prefix = "FTE"
+	}
+	user.UniqueID = prefix + "-" + strconv.FormatInt(time.Now().UnixNano(), 36)
+	if database.DB != nil && user.ID > 0 {
+		database.DB.Model(user).Update("unique_id", user.UniqueID)
+	}
+}
+
+func setSessionCookie(c echo.Context, user models.User) {
+	token, err := signSessionToken(map[string]interface{}{
+		"id":        user.ID,
+		"unique_id": user.UniqueID,
+		"name":      user.Name,
+		"role":      user.Role,
+		"email":     user.Email,
+		"ops_id":    user.OpsID,
+		"exp":       time.Now().Add(12 * time.Hour).Unix(),
+	})
+	if err != nil {
+		return
+	}
+
+	c.SetCookie(&http.Cookie{
+		Name:     "soc5_token",
+		Value:    token,
+		Path:     "/",
+		MaxAge:   int((12 * time.Hour).Seconds()),
+		HttpOnly: true,
+		SameSite: http.SameSiteLaxMode,
+		Secure:   os.Getenv("APP_ENV") == "production",
+	})
+}
+
+func readSessionClaims(c echo.Context) (map[string]interface{}, bool) {
+	cookie, err := c.Cookie("soc5_token")
+	if err != nil || strings.TrimSpace(cookie.Value) == "" {
+		return nil, false
+	}
+
+	parts := strings.Split(cookie.Value, ".")
+	if len(parts) != 3 {
+		return nil, false
+	}
+
+	unsigned := parts[0] + "." + parts[1]
+	if !hmac.Equal([]byte(parts[2]), []byte(signJWTPart(unsigned))) {
+		return nil, false
+	}
+
+	payload, err := base64.RawURLEncoding.DecodeString(parts[1])
+	if err != nil {
+		return nil, false
+	}
+
+	claims := map[string]interface{}{}
+	if err := json.Unmarshal(payload, &claims); err != nil {
+		return nil, false
+	}
+
+	if exp, ok := claims["exp"].(float64); ok && time.Now().Unix() > int64(exp) {
+		return nil, false
+	}
+
+	return claims, true
+}
+
+func signSessionToken(claims map[string]interface{}) (string, error) {
+	headerJSON, err := json.Marshal(map[string]string{"alg": "HS256", "typ": "JWT"})
+	if err != nil {
+		return "", err
+	}
+	payloadJSON, err := json.Marshal(claims)
+	if err != nil {
+		return "", err
+	}
+
+	header := base64.RawURLEncoding.EncodeToString(headerJSON)
+	payload := base64.RawURLEncoding.EncodeToString(payloadJSON)
+	unsigned := header + "." + payload
+	return unsigned + "." + signJWTPart(unsigned), nil
+}
+
+func signJWTPart(unsigned string) string {
+	mac := hmac.New(sha256.New, []byte(sessionSecret()))
+	_, _ = mac.Write([]byte(unsigned))
+	return base64.RawURLEncoding.EncodeToString(mac.Sum(nil))
+}
+
+func sessionSecret() string {
+	if secret := os.Getenv("JWT_SECRET"); secret != "" {
+		return secret
+	}
+	if secret := os.Getenv("APP_SECRET"); secret != "" {
+		return secret
+	}
+	return "soc5-dev-session-secret"
+}
+
 func roleLabel(role string) string {
 	switch role {
 	case "ops_pic":
@@ -661,10 +1327,6 @@ func roleLabel(role string) string {
 		return "FTE MM"
 	case "dock_officer", "doc_officer":
 		return "Dock Officer"
-	case "data_team":
-		return "Data Team"
-	case "admin":
-		return "Admin"
 	default:
 		return role
 	}
@@ -678,11 +1340,11 @@ func loadStats() AppStats {
 
 	start := time.Now().Truncate(24 * time.Hour)
 	database.DB.Model(&models.Request{}).Where("request_timestamp >= ?", start).Count(&stats.TotalToday)
-	database.DB.Model(&models.Request{}).Where("status IN ? OR status = ''", []string{StatusPendingOps, StatusRejected}).Count(&stats.PendingOps)
-	database.DB.Model(&models.Request{}).Where("status = ?", StatusPendingMM).Count(&stats.PendingMM)
+	database.DB.Model(&models.Request{}).Where("status IN ? OR status = ''", []string{StatusPending, StatusRejectedByMM}).Count(&stats.PendingOps)
+	database.DB.Model(&models.Request{}).Where("status = ?", StatusApproved).Count(&stats.PendingMM)
 	database.DB.Model(&models.Request{}).Where("status = ?", StatusForDocking).Count(&stats.ForDocking)
 	database.DB.Model(&models.Request{}).Where("status IN ?", []string{StatusAssigned, StatusForDocking, StatusDocked, StatusConfirmed}).Count(&stats.ConfirmedTrucks)
-	database.DB.Model(&models.Request{}).Where("status IN ?", []string{StatusRejected, StatusCanceled}).Count(&stats.Rejected)
+	database.DB.Model(&models.Request{}).Where("status IN ?", []string{StatusRejectedByMM, StatusCancelled}).Count(&stats.Rejected)
 
 	return stats
 }
@@ -693,8 +1355,8 @@ func pendingCount(status string) int64 {
 	}
 
 	var count int64
-	if status == StatusPendingOps {
-		database.DB.Model(&models.Request{}).Where("status IN ? OR status = ''", []string{StatusPendingOps, StatusRejected}).Count(&count)
+	if status == StatusPending {
+		database.DB.Model(&models.Request{}).Where("status IN ? OR status = ''", []string{StatusPending, StatusRejectedByMM}).Count(&count)
 		return count
 	}
 
@@ -781,14 +1443,14 @@ func queryRequestRows(queue, status, search, dateFrom, dateTo string) []RequestR
 	query := database.DB.Model(&models.Request{})
 	switch strings.ToLower(queue) {
 	case "ops":
-		query = query.Where("status IN ? OR status = ''", []string{StatusPendingOps, StatusRejected})
+		query = query.Where("status IN ? OR status = ''", []string{StatusPending, StatusRejectedByMM})
 	case "mm":
-		query = query.Where("status IN ?", []string{StatusPendingMM, StatusAssigned})
+		query = query.Where("status IN ?", []string{StatusApproved, StatusAssigned})
 	case "dock":
 		query = query.Where("status IN ?", []string{StatusForDocking, StatusDocked})
 	}
 
-	if status = strings.ToUpper(strings.TrimSpace(status)); status != "" && status != "ALL" {
+	if status = normalizeStatusValue(status); status != "" && status != "ALL" {
 		query = query.Where("status = ?", status)
 	}
 
@@ -851,10 +1513,10 @@ func requestToRow(request models.Request) RequestRow {
 
 func normalizeStatus(request models.Request) string {
 	if request.Status != "" {
-		return request.Status
+		return normalizeStatusValue(request.Status)
 	}
 	if request.RejectedAt != nil || request.RejectionRemarks != "" {
-		return StatusRejected
+		return StatusRejectedByMM
 	}
 	if request.DockedTime != nil {
 		return StatusDocked
@@ -863,16 +1525,33 @@ func normalizeStatus(request models.Request) string {
 		return StatusForDocking
 	}
 	if request.ApprovedAt != nil || request.ProvideTime != nil {
-		return StatusPendingMM
+		return StatusApproved
 	}
-	return StatusPendingOps
+	return StatusPending
+}
+
+func normalizeStatusValue(status string) string {
+	switch strings.ToUpper(strings.TrimSpace(status)) {
+	case "PENDING_OPS", StatusPending:
+		return StatusPending
+	case "PENDING_MM", StatusApproved:
+		return StatusApproved
+	case "CANCELED", StatusCancelled:
+		return StatusCancelled
+	case "REJECTED", StatusRejectedByMM:
+		return StatusRejectedByMM
+	case StatusAssigned, StatusForDocking, StatusDocked, StatusConfirmed, "ALL":
+		return strings.ToUpper(strings.TrimSpace(status))
+	default:
+		return strings.ToUpper(strings.TrimSpace(status))
+	}
 }
 
 func statusLabel(status string) string {
 	switch status {
-	case StatusPendingOps:
+	case StatusPending:
 		return "Pending"
-	case StatusPendingMM:
+	case StatusApproved:
 		return "Approved"
 	case StatusAssigned:
 		return "Assigned"
@@ -882,10 +1561,10 @@ func statusLabel(status string) string {
 		return "Docked"
 	case StatusConfirmed:
 		return "Confirmed"
-	case StatusCanceled:
-		return "Canceled"
-	case StatusRejected:
-		return "Rejected"
+	case StatusCancelled:
+		return "Cancelled"
+	case StatusRejectedByMM:
+		return "Rejected by MM"
 	default:
 		return "Pending"
 	}

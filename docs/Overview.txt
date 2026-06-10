@@ -169,8 +169,8 @@ Sortable columns
 Sound Notifications
 Implementation
 
-FTE Ops: Alert sound when new PENDING_OPS request arrives
-FTE MM: Alert sound when new PENDING_MM request arrives
+FTE Ops: Alert sound when new PENDING request arrives
+FTE MM: Alert sound when new APPROVED request arrives
 Use Web Audio API with a professional notification chime
 Visual badge counter in sidebar + header
 Polling every 5 seconds to check for new items

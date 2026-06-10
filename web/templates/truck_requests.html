@@ -24,11 +24,11 @@
 <section class="panel table-panel">
   <div class="quick-filter-tabs" data-quick-filters>
     <button type="button" class="is-active" data-status-filter="ALL">All</button>
-    <button type="button" data-status-filter="PENDING_MM">Approved</button>
+    <button type="button" data-status-filter="APPROVED">Approved</button>
     <button type="button" data-status-filter="ASSIGNED">Assigned</button>
     <button type="button" data-status-filter="FOR_DOCKING">Docking</button>
     <button type="button" data-status-filter="DOCKED">Docked</button>
-    <button type="button" data-status-filter="REJECTED">Exceptions</button>
+    <button type="button" data-status-filter="REJECTED_BY_MM">Exceptions</button>
   </div>
   <div class="table-toolbar">
     <label class="search-field">
@@ -47,12 +47,12 @@
       <span>Status</span>
       <select data-filter-status>
         <option value="ALL">All</option>
-        <option value="PENDING_MM">Approved</option>
+        <option value="APPROVED">Approved</option>
         <option value="ASSIGNED">Assigned</option>
         <option value="FOR_DOCKING">For Docking</option>
         <option value="DOCKED">Docked</option>
-        <option value="CANCELED">Canceled</option>
-        <option value="REJECTED">Rejected</option>
+        <option value="CANCELLED">CANCELLED</option>
+        <option value="REJECTED_BY_MM">REJECTED_BY_MM</option>
       </select>
     </label>
     <div class="table-view-controls">

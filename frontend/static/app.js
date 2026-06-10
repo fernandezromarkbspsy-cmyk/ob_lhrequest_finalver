@@ -2,6 +2,16 @@
   const storageKey = "soc5_user";
   const themeKey = "soc5_theme";
   const user = readUser();
+  const apiBase = String((window.SOC5_CONFIG && window.SOC5_CONFIG.API_BASE) || "").replace(/\/$/, "");
+  const routeMap = {
+    "/": "./index.html",
+    "/dashboard": "./dashboard.html",
+    "/outbound/lh-request": "./lh-request.html",
+    "/outbound/lh-requests": "./lh-request.html",
+    "/midmile/truck-request": "./truck-request.html",
+    "/dock/officer": "./dock-officer.html",
+    "/settings": "./settings.html",
+  };
   let notificationAudioContext = null;
   let notificationAudioReady = false;
   let pendingNotificationChimes = 0;
@@ -52,6 +62,18 @@
 
   function saveUser(nextUser) {
     localStorage.setItem(storageKey, JSON.stringify(nextUser));
+  }
+
+  function apiPath(path) {
+    return apiBase + path;
+  }
+
+  function appRoute(path) {
+    const value = String(path || "/dashboard");
+    const match = value.match(/^([^?#]*)(.*)$/);
+    const base = match ? match[1] : value;
+    const suffix = match ? match[2] : "";
+    return (routeMap[base] || value) + (routeMap[base] ? suffix : "");
   }
 
   function applyRoleVisibility() {
@@ -107,7 +129,7 @@
     document.querySelectorAll("[data-logout]").forEach((button) => {
       button.addEventListener("click", () => {
         localStorage.removeItem(storageKey);
-        location.href = "/";
+        location.href = appRoute("/");
       });
     });
   }
@@ -232,7 +254,7 @@
 
       const payload = formToObject(form);
       try {
-        const response = await fetch("/api/login", jsonOptions(payload));
+        const response = await fetch(apiPath("/api/login"), jsonOptions(payload));
         const body = await response.json().catch(() => ({}));
         if (!response.ok) {
           throw new Error(body.error || body.message || "Invalid credentials");
@@ -243,7 +265,7 @@
         form.classList.remove("shake");
         form.classList.add("success");
         window.setTimeout(() => {
-          location.href = body.redirect || "/dashboard";
+          location.href = appRoute(body.redirect || "/dashboard");
         }, 420);
       } catch (error) {
         setLoginError(error.message);
@@ -290,7 +312,7 @@
           const requestID = requestForm.querySelector("[data-request-id]");
           const id = requestID ? requestID.value : "";
           const url = id ? `/api/requests/${id}/edit` : "/api/requests";
-          const response = await fetch(url, jsonOptions(formToObject(requestForm)));
+          const response = await fetch(apiPath(url), jsonOptions(formToObject(requestForm)));
           const body = await response.json().catch(() => ({}));
           if (!response.ok) {
             throw new Error(body.error || body.message || (id ? "Unable to update request" : "Unable to create request"));
@@ -366,7 +388,7 @@
 
     const currentUser = readUser();
     if (!currentUser || (currentUser.role !== "fte_ops" && currentUser.role !== "fte_mm")) {
-      location.href = "/dashboard";
+      location.href = appRoute("/dashboard");
       return;
     }
 
@@ -411,7 +433,7 @@
         setAddRoleError("");
 
         try {
-          const response = await fetch("/api/users", jsonOptions(formToObject(form)));
+          const response = await fetch(apiPath("/api/users"), jsonOptions(formToObject(form)));
           const body = await response.json().catch(() => ({}));
           if (!response.ok) {
             throw new Error(body.error || body.message || "Unable to add role");
@@ -434,7 +456,7 @@
     document.querySelectorAll("[data-copy-share-link]").forEach((button) => {
       button.addEventListener("click", async () => {
         const input = document.querySelector("[data-share-link]");
-        const value = new URL(input ? input.value : "/settings", location.origin).href;
+        const value = new URL(input ? input.value : "./settings.html", location.href).href;
         try {
           await navigator.clipboard.writeText(value);
           toast("Share link copied");
@@ -465,7 +487,7 @@
       const id = form.querySelector("[data-action-id]").value;
       const action = form.querySelector("[data-action-type]").value;
       try {
-        const response = await fetch(`/api/requests/${id}/${action}`, jsonOptions(formToObject(form)));
+        const response = await fetch(apiPath(`/api/requests/${id}/${action}`), jsonOptions(formToObject(form)));
         const body = await response.json().catch(() => ({}));
         if (!response.ok) {
           throw new Error(body.error || body.message || "Unable to update request");
@@ -500,7 +522,7 @@
 
     setTableLoading(true);
     try {
-      const response = await fetch("/api/requests?" + params.toString());
+      const response = await fetch(apiPath("/api/requests?" + params.toString()));
       const body = await response.json().catch(() => ({ requests: [] }));
       state.rows = Array.isArray(body.requests) ? body.requests : [];
       renderTable();
@@ -971,7 +993,7 @@
       state.inlineRequestSaving = true;
       renderTable();
       try {
-        const response = await fetch("/api/requests", jsonOptions(payload));
+        const response = await fetch(apiPath("/api/requests"), jsonOptions(payload));
         const body = await response.json().catch(() => ({}));
         if (!response.ok) {
           throw new Error(body.error || body.message || "Unable to create request");
@@ -1093,7 +1115,7 @@
       return;
     }
 
-    const response = await fetch("/api/request-trend");
+    const response = await fetch(apiPath("/api/request-trend"));
     const body = await response.json().catch(() => ({ points: [] }));
     const points = Array.isArray(body.points) ? body.points : [];
     renderRequestTrend(points, body.period_label || "6 PM - 6 AM");
@@ -1160,7 +1182,7 @@
     const search = searchTerm ?? valueOf("[data-global-search]");
     addParam(params, "search", search);
     const query = params.toString();
-    const response = await fetch("/api/requests" + (query ? "?" + query : ""));
+    const response = await fetch(apiPath("/api/requests" + (query ? "?" + query : "")));
     const body = await response.json().catch(() => ({ requests: [] }));
     const rows = (body.requests || []).slice(0, 8);
     if (rows.length === 0) {
@@ -1220,7 +1242,7 @@
       return;
     }
 
-    const source = new EventSource("/api/events");
+    const source = new EventSource(apiPath("/api/events"), { withCredentials: true });
     ["request.created", "request.updated", "request.status_changed"].forEach((eventName) => {
       source.addEventListener(eventName, () => {
         scheduleWorkflowRefresh();
@@ -1272,10 +1294,10 @@
 
   async function updateStats() {
     try {
-      const response = await fetch("/api/stats");
+      const response = await fetch(apiPath("/api/stats"));
       const stats = await response.json();
-      const ops = Number(stats.PENDING || 0);
-      const mm = Number(stats.APPROVED || 0);
+      const ops = Number(stats.pending_ops || stats.pending || stats.PENDING || 0);
+      const mm = Number(stats.pending_mm || stats.approved || stats.APPROVED || 0);
       const dock = Number(stats.for_docking || 0);
       setBadge("ops", ops);
       setBadge("mm", mm);
@@ -1396,7 +1418,7 @@
     if (selects.length === 0) {
       return;
     }
-    const response = await fetch("/api/clusters");
+    const response = await fetch(apiPath("/api/clusters"));
     const clusters = await response.json().catch(() => []);
     state.clusters = Array.isArray(clusters) ? clusters : [];
     document.querySelectorAll("[data-cluster-select]").forEach((select) => {
@@ -1479,10 +1501,10 @@
     const hubs = splitHubs(row.cluster);
     const type = hubs.length >= 3 ? "triload" : hubs.length === 2 ? "coload" : "single";
     const src = type === "triload"
-      ? "/truck_label/triload_lh.jpg"
+      ? "./truck_label/triload_lh.jpg"
       : type === "coload"
-        ? "/truck_label/coload_lh.jpg"
-        : "/truck_label/single_lh.jpg";
+        ? "./truck_label/coload_lh.jpg"
+        : "./truck_label/single_lh.jpg";
 
     sheet.classList.remove("is-single", "is-coload", "is-triload");
     sheet.classList.add(`is-${type}`);
@@ -1540,7 +1562,7 @@
 
     const value = String(driverID || "").trim();
     image.alt = value ? `Driver ID QR Code: ${value}` : "Driver ID QR Code";
-    image.src = value ? `/api/qr?value=${encodeURIComponent(value)}` : "";
+    image.src = value ? apiPath(`/api/qr?value=${encodeURIComponent(value)}`) : "";
   }
 
   function openModal(modal) {
@@ -1582,6 +1604,7 @@
   function jsonOptions(payload) {
     return {
       method: "POST",
+      credentials: "include",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload),
     };

@@ -1,31 +1,29 @@
 tables:
 
-Cluster:
-- cluster_name
-- hub_name
-- region
-- dock_number
-- backlogs
-- backlogs_ts
-- active
-- created at
+clusters:
+- cluster_name = Cluster lookup/dropdown value
+- hub_name = Hub Name lookup/dropdown detail
+- region = Region lookup value
+- dock_number = Dock No. lookup value
+- backlogs = Backlogs lookup value
+- backlogs_ts = Backlogs timestamp
 
-User:
-- name
-- role(fte_ops, fte_mm, ops_pic, dock_officer, doc_officer, data_team, admin)
-- ops_id (is null)
-- email (is null)
-- is_fte
-- is_active
-- created_at
+users:
+- name = user name
+- role = user role (fte_ops, fte_mm, ops_pic, dock_officer, doc_officer)
+- ops_id = Backroom login identifier
+- email = FTE login identifier
+- password_hash = Backroom password/change-password storage
+- first_time_login = whether the user still needs to change initial password
 
-Request Table:
+requests:
+- Stores all linehaul requests
 - request_timestamp
 - cluster
 - region
 - dock_no
 - backlogs
-- baclogs_ts
+- backlogs_ts
 - ob_fte
 - ob_ops_pic
 - midmile_fte
@@ -35,10 +33,36 @@ Request Table:
 - provide_time
 - linehaul_trip_no
 - docked_time
-- status (PENDING_OPS, PENDING_MM, ASSIGNED, FOR_DOCKING, DOCKED, CONFIRMED, CANCELED, REJECTED)
+- status (PENDING, APPROVED, ASSIGNED, FOR_DOCKING, DOCKED, CONFIRMED, CANCELLED, REJECTED_BY_MM)
 - rejection_remarks
 - approved_at
 - rejected_at
 - confirmed_at
 - created_at
 - updated_at
+
+request_events:
+- request_id = related request ID
+- event_type = workflow event name
+- action = action that created the event
+- status = request status after the event
+- previous_status = request status before the event
+- payload = JSON event payload
+- created_at
+
+notifications:
+- role = recipient role
+- request_id = related request ID
+- event_type = workflow event name
+- message = notification message
+- should_play_sound = whether frontend should play the alert sound
+- sound_played_at
+- read_at
+- created_at
+
+user_otps:
+- email = FTE email
+- code_hash = bcrypt hash of OTP code
+- expires_at
+- used_at
+- created_at

@@ -25,11 +25,11 @@
 <section class="panel table-panel">
   <div class="quick-filter-tabs" data-quick-filters>
     <button type="button" class="is-active" data-status-filter="ALL">All</button>
-    <button type="button" data-status-filter="PENDING_OPS">Pending Ops</button>
-    <button type="button" data-status-filter="PENDING_MM">Approved</button>
+    <button type="button" data-status-filter="PENDING">Pending Ops</button>
+    <button type="button" data-status-filter="APPROVED">Approved</button>
     <button type="button" data-status-filter="ASSIGNED">Assigned</button>
     <button type="button" data-status-filter="FOR_DOCKING">Docking</button>
-    <button type="button" data-status-filter="REJECTED">Exceptions</button>
+    <button type="button" data-status-filter="REJECTED_BY_MM">Exceptions</button>
   </div>
   <div class="table-toolbar">
     <label class="search-field">
@@ -48,13 +48,13 @@
       <span>Status</span>
       <select data-filter-status>
         <option value="ALL">All</option>
-        <option value="PENDING_OPS">Pending</option>
-        <option value="PENDING_MM">Approved</option>
+        <option value="PENDING">Pending</option>
+        <option value="APPROVED">Approved</option>
         <option value="ASSIGNED">Assigned</option>
         <option value="FOR_DOCKING">For Docking</option>
         <option value="DOCKED">Docked</option>
-        <option value="CANCELED">Canceled</option>
-        <option value="REJECTED">Rejected</option>
+        <option value="CANCELLED">CANCELLED</option>
+        <option value="REJECTED_BY_MM">REJECTED_BY_MM</option>
       </select>
     </label>
     <div class="table-view-controls">
@@ -137,12 +137,16 @@
       <label><span>Dock</span><input name="dock_no" required></label>
       <label><span>Backlogs</span><input name="backlogs" type="number" min="0" value="0"></label>
       <label><span>Truck size</span><select name="truck_size">
-        <option value="6WH">6WH</option>
+        <option value="6W">6W</option>
         <option value="6WF">6WF</option>
-        <option value="4WH">4WH</option>
-        <option value="10WH">10WH</option>
+        <option value="4W">4W</option>
+        <option value="10W">10W</option>
       </select></label>
-      <label><span>Truck type</span><input name="truck_type" placeholder="Optional"></label>
+      <label><span>Truck type</span><select name="truck_type">
+        <option value="">Select type</option>
+        <option value="WETLEASE">WETLEASE</option>
+        <option value="DRYLEASE">DRYLEASE</option>
+      </select></label>
       <label><span>Ops PIC</span><input name="ob_ops_pic" data-current-user-name></label>
       <div class="form-actions">
         <button class="ghost-button" type="button" data-close-request-modal><span class="ui-icon icon-close" aria-hidden="true"></span><span>Cancel</span></button>

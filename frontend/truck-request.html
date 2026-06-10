@@ -1,12 +1,11 @@
-{{define "layout"}}
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>{{.Title}} | SOC 5 Outbound</title>
-  <link rel="stylesheet" href="/static/app.css?v={{assetVersion "web/static/app.css"}}">
-  <link rel="stylesheet" href="/static/gentelella.css?v={{assetVersion "web/static/gentelella.css"}}">
+  <title>Truck Request | SOC 5 Outbound</title>
+  <link rel="stylesheet" href="./static/app.css">
+  <link rel="stylesheet" href="./static/gentelella.css">
   <script>
     (function () {
       try {
@@ -16,14 +15,15 @@
       } catch (_) {}
     })();
   </script>
-  <script defer src="/static/app.js?v={{assetVersion "web/static/app.js"}}"></script>
+  <script src="./config.js"></script>
+  <script defer src="./static/app.js"></script>
 </head>
 
-<body class="{{if .BodyModifier}}{{.BodyModifier}}{{end}}">
+<body class="">
   <div class="app-shell">
     <aside class="sidebar">
-      <a class="brand" href="/dashboard" aria-label="SOC 5 Outbound dashboard">
-        <span class="brand-mark"><img src="/static/icons/delivery.png" alt="" aria-hidden="true"></span>
+      <a class="brand" href="./dashboard.html" aria-label="SOC 5 Outbound dashboard">
+        <span class="brand-mark"><img src="./static/icons/delivery.png" alt="" aria-hidden="true"></span>
         <span>
           <strong>OUTBOUND</strong>
           <small>SOC 5</small>
@@ -32,7 +32,7 @@
 
       <nav class="nav" aria-label="Primary navigation">
         <p class="nav-label">Menu</p>
-        <a data-role-link="ops_pic fte_ops fte_mm dock_officer doc_officer" href="/dashboard" class="nav-link {{if eq .ActiveMenu "dashboard"}}is-active{{end}}">
+        <a data-role-link="ops_pic fte_ops fte_mm dock_officer doc_officer" href="./dashboard.html" class="nav-link ">
           <span class="nav-icon"><span class="ui-icon icon-dashboard" aria-hidden="true"></span></span>
           <span>Dashboard</span>
         </a>
@@ -46,10 +46,10 @@
             <span class="chevron"><span class="ui-icon icon-chevron-down" aria-hidden="true"></span></span>
           </button>
           <div class="nav-group-items">
-            <a href="/outbound/lh-request" class="nav-link nav-child {{if eq .ActiveMenu "lh-request"}}is-active{{end}}">
+            <a href="./lh-request.html" class="nav-link nav-child ">
               <span class="nav-icon"><span class="ui-icon icon-truck" aria-hidden="true"></span></span>
               <span>LH Request</span>
-              <span data-badge="ops" class="badge {{if .PendingOps}}has-items{{end}}">{{.PendingOps}}</span>
+              <span data-badge="ops" class="badge ">0</span>
             </a>
           </div>
         </section>
@@ -63,10 +63,10 @@
             <span class="chevron"><span class="ui-icon icon-chevron-down" aria-hidden="true"></span></span>
           </button>
           <div class="nav-group-items">
-            <a href="/midmile/truck-request" class="nav-link nav-child {{if eq .ActiveMenu "truck-request"}}is-active{{end}}">
+            <a href="./truck-request.html" class="nav-link nav-child is-active">
               <span class="nav-icon"><span class="ui-icon icon-clock" aria-hidden="true"></span></span>
               <span>Truck Request</span>
-              <span data-badge="mm" class="badge {{if .PendingMM}}has-items{{end}}">{{.PendingMM}}</span>
+              <span data-badge="mm" class="badge ">0</span>
             </a>
           </div>
         </section>
@@ -80,10 +80,10 @@
             <span class="chevron"><span class="ui-icon icon-chevron-down" aria-hidden="true"></span></span>
           </button>
           <div class="nav-group-items">
-            <a href="/dock/officer" class="nav-link nav-child {{if eq .ActiveMenu "dock-officer"}}is-active{{end}}">
+            <a href="./dock-officer.html" class="nav-link nav-child ">
               <span class="nav-icon"><span class="ui-icon icon-clock" aria-hidden="true"></span></span>
               <span>Dock Officer</span>
-              <span data-badge="dock" class="badge {{if .PendingDock}}has-items{{end}}">{{.PendingDock}}</span>
+              <span data-badge="dock" class="badge ">0</span>
             </a>
           </div>
         </section>
@@ -99,11 +99,11 @@
             <span class="chevron"><span class="ui-icon icon-chevron-down" aria-hidden="true"></span></span>
           </button>
           <div class="nav-group-items">
-            <a href="/settings#add-new-role" class="nav-link nav-child {{if eq .ActiveMenu "settings"}}is-active{{end}}">
+            <a href="./settings.html#add-new-role" class="nav-link nav-child ">
               <span class="nav-icon"><span class="ui-icon icon-user-plus" aria-hidden="true"></span></span>
               <span>Add New Role</span>
             </a>
-            <a href="/settings#share" class="nav-link nav-child {{if eq .ActiveMenu "settings-share"}}is-active{{end}}">
+            <a href="./settings.html#share" class="nav-link nav-child ">
               <span class="nav-icon"><span class="ui-icon icon-share" aria-hidden="true"></span></span>
               <span>Share</span>
             </a>
@@ -131,7 +131,7 @@
           </button>
           <div>
             <span class="topbar-kicker">Gentelella Admin</span>
-            <h1>{{.Title}}</h1>
+            <h1>Truck Request</h1>
           </div>
         </div>
 
@@ -145,7 +145,7 @@
           </button>
           <button class="notification-button" type="button" data-open-notifications title="Notifications" aria-label="Notifications" aria-expanded="false">
             <span class="ui-icon icon-bell" aria-hidden="true"></span>
-            <strong data-notification-count>{{add .PendingOps (add .PendingMM .PendingDock)}}</strong>
+            <strong data-notification-count>0</strong>
           </button>
           <span class="connection-pill">
             <span class="ui-icon icon-wifi" aria-hidden="true"></span>
@@ -171,7 +171,132 @@
       </header>
 
       <div class="page-content">
-        {{template "content" .}}
+        <section class="queue-header" data-requests-page data-default-queue="all">
+  <div>
+    <p class="eyebrow">Midmile</p>
+    <h2>Truck Request</h2>
+  </div>
+  <div class="queue-actions">
+    <button class="ghost-button" type="button" data-export-csv><span class="ui-icon icon-download" aria-hidden="true"></span><span>Export CSV</span></button>
+  </div>
+</section>
+
+<section data-role-link="fte_mm" class="panel approval-strip">
+  <div>
+    <p class="eyebrow">FTE MM</p>
+    <h2>Pending Confirmation Queue</h2>
+  </div>
+  <strong data-mm-pending-count>0</strong>
+</section>
+
+<section class="panel table-panel">
+  <div class="quick-filter-tabs" data-quick-filters>
+    <button type="button" class="is-active" data-status-filter="ALL">All</button>
+    <button type="button" data-status-filter="APPROVED">Approved</button>
+    <button type="button" data-status-filter="ASSIGNED">Assigned</button>
+    <button type="button" data-status-filter="FOR_DOCKING">Docking</button>
+    <button type="button" data-status-filter="DOCKED">Docked</button>
+    <button type="button" data-status-filter="REJECTED_BY_MM">Exceptions</button>
+  </div>
+  <div class="table-toolbar">
+    <label class="search-field">
+      <span>Search</span>
+      <input type="search" data-filter-search placeholder="Plate, trip, cluster">
+    </label>
+    <label>
+      <span>Date from</span>
+      <input type="date" data-filter-from>
+    </label>
+    <label>
+      <span>Date to</span>
+      <input type="date" data-filter-to>
+    </label>
+    <label>
+      <span>Status</span>
+      <select data-filter-status>
+        <option value="ALL">All</option>
+        <option value="APPROVED">Approved</option>
+        <option value="ASSIGNED">Assigned</option>
+        <option value="FOR_DOCKING">For Docking</option>
+        <option value="DOCKED">Docked</option>
+        <option value="CANCELLED">CANCELLED</option>
+        <option value="REJECTED_BY_MM">REJECTED_BY_MM</option>
+      </select>
+    </label>
+    <div class="table-view-controls">
+      <button class="ghost-button compact" type="button" data-density-toggle><span class="ui-icon icon-dashboard" aria-hidden="true"></span><span>Density</span></button>
+      <details class="column-menu" data-column-menu>
+        <summary class="ghost-button compact">Columns</summary>
+        <label><input type="checkbox" data-column-toggle="region" checked> Region</label>
+        <label><input type="checkbox" data-column-toggle="dock" checked> Dock</label>
+        <label><input type="checkbox" data-column-toggle="backlogs" checked> Backlogs</label>
+        <label><input type="checkbox" data-column-toggle="driver" checked> Driver</label>
+        <label><input type="checkbox" data-column-toggle="trip" checked> Trip No.</label>
+      </details>
+    </div>
+  </div>
+
+  <div class="data-table-wrap">
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th data-sort="request_date">Requested</th>
+          <th data-sort="cluster">Cluster</th>
+          <th data-sort="region">Region</th>
+          <th>Dock</th>
+          <th data-sort="backlogs">Backlogs</th>
+          <th>Truck</th>
+          <th data-sort="plate_number">Plate</th>
+          <th data-sort="driver_id">Driver</th>
+          <th>Trip No.</th>
+          <th>Docking Time</th>
+          <th data-sort="status">Status</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody data-request-table>
+        -</td>
+            <td>{{if .DriverID}}{{.DriverID}}{{else}}-{{end}}</td>
+            <td>{{if .LinehaulTripNo}}{{.LinehaulTripNo}}{{else}}-{{end}}</td>
+            <td>{{if .DockingTime}}{{.DockingTime}}{{else}}-{{end}}</td>
+            <td><span class="status-pill {{.Status}}">{{.StatusLabel}}</span></td>
+            <td><span class="muted">Loading</span></td>
+          </tr>
+          {{end}}
+        {{else}}
+          <tr><td colspan="12" class="empty-state">No truck requests found.</td></tr>
+        {{end}}
+      </tbody>
+    </table>
+  </div>
+  <div class="request-card-list" data-request-cards></div>
+  <div class="pagination-row">
+    <button class="ghost-button compact" type="button" data-page-prev><span class="ui-icon icon-arrow-left" aria-hidden="true"></span><span>Previous</span></button>
+    <span data-page-label>Page 1</span>
+    <button class="ghost-button compact" type="button" data-page-next><span>Next</span><span class="ui-icon icon-arrow-right" aria-hidden="true"></span></button>
+  </div>
+</section>
+
+<div class="modal-backdrop is-hidden" data-action-modal>
+  <section class="dialog small" role="dialog" aria-modal="true" aria-labelledby="action-title">
+    <button class="icon-button modal-close" type="button" data-close-action-modal aria-label="Close"><span class="ui-icon icon-close" aria-hidden="true"></span></button>
+    <h2 id="action-title" data-action-title>Update Request</h2>
+    <form class="form-grid single" data-action-form>
+      <input type="hidden" name="id" data-action-id>
+      <input type="hidden" name="action" data-action-type>
+      <label data-assign-field><span>FTE MM</span><input name="midmile_fte" data-current-user-name></label>
+      <label data-plate-field class="is-hidden"><span>Plate #</span><input name="plate_number"></label>
+      <label data-dock-field class="is-hidden"><span>Driver ID</span><input name="driver_id"></label>
+      <label data-dock-field class="is-hidden"><span>LHTrip #</span><input name="linehaul_trip_no"></label>
+      <label data-dock-field class="is-hidden"><span>Docking Time</span><input name="docking_time" type="datetime-local"></label>
+      <label data-reject-field class="is-hidden"><span>Remarks</span><textarea name="remarks" rows="4"></textarea></label>
+      <div class="form-actions">
+        <button class="ghost-button" type="button" data-close-action-modal><span class="ui-icon icon-close" aria-hidden="true"></span><span>Cancel</span></button>
+        <button class="primary-button" type="submit"><span class="ui-icon icon-check" aria-hidden="true"></span><span>Submit</span></button>
+      </div>
+    </form>
+  </section>
+</div>
       </div>
     </main>
   </div>
@@ -189,17 +314,17 @@
       </button>
     </div>
     <div class="drawer-alerts">
-      <a href="/outbound/lh-request?status=PENDING" class="drawer-alert">
+      <a href="./lh-request.html?status=PENDING" class="drawer-alert">
         <span class="status-dot PENDING"></span>
-        <span><strong>Ops approval</strong><small data-ops-pending-count>{{.PendingOps}}</small></span>
+        <span><strong>Ops approval</strong><small data-ops-pending-count>0</small></span>
       </a>
-      <a href="/midmile/truck-request?status=APPROVED" class="drawer-alert">
+      <a href="./truck-request.html?status=APPROVED" class="drawer-alert">
         <span class="status-dot APPROVED"></span>
-        <span><strong>Midmile handoff</strong><small data-mm-pending-count>{{.PendingMM}}</small></span>
+        <span><strong>Midmile handoff</strong><small data-mm-pending-count>0</small></span>
       </a>
-      <a href="/dock/officer?status=FOR_DOCKING" class="drawer-alert">
+      <a href="./dock-officer.html?status=FOR_DOCKING" class="drawer-alert">
         <span class="status-dot FOR_DOCKING"></span>
-        <span><strong>Docking queue</strong><small data-dock-pending-count>{{.PendingDock}}</small></span>
+        <span><strong>Docking queue</strong><small data-dock-pending-count>0</small></span>
       </a>
     </div>
     <div class="drawer-footer">
@@ -228,11 +353,11 @@
     </section>
   </div>
 
-  <div class="modal-backdrop {{if not .ShowLogin}}is-hidden{{end}}" data-login-modal>
+  <div class="modal-backdrop is-hidden" data-login-modal>
     <section class="login-modal" role="dialog" aria-modal="true" aria-labelledby="login-title">
       <button class="icon-button modal-close" type="button" data-close-login aria-label="Close login"><span class="ui-icon icon-close" aria-hidden="true"></span></button>
       <div class="login-heading">
-        <span class="brand-mark"><img src="/static/icons/delivery.png" alt="" aria-hidden="true"></span>
+        <span class="brand-mark"><img src="./static/icons/delivery.png" alt="" aria-hidden="true"></span>
         <div>
           <p class="eyebrow">SOC 5 Outbound</p>
           <h2 id="login-title">Sign in</h2>
@@ -265,4 +390,4 @@
   </div>
 </body>
 </html>
-{{end}}
+

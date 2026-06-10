@@ -1,79 +1,88 @@
 # Golang Dashboard
 
-SOC 5 outbound linehaul request dashboard built with Go, Echo, GORM, Postgres, server-rendered HTML templates, and vanilla browser JavaScript.
+SOC 5 outbound linehaul request dashboard with a separated Go API backend and static browser frontend.
 
 ## Requirements
 
 - Go 1.25 or newer
 - Postgres database, such as Supabase Postgres
 
+## Project Layout
+
+```text
+cmd/server/              Backend API/SSE server
+cmd/frontend/            Local static frontend server
+frontend/                Static HTML/CSS/JS frontend app
+internal/database/       Postgres connection setup
+internal/events/         In-process event bus for workflow events
+internal/handlers/       JSON API handlers
+internal/models/         GORM models
+internal/routes/         API route registration
+web/                     Legacy frontend source kept for reference
+docs/database.txt        Database table reference
+```
+
 ## Setup
 
-1. Install dependencies:
+Install dependencies:
 
 ```powershell
 go mod download
 ```
 
-2. Create a `.env` file in the project root.
-
-Use a single connection string:
+Create a `.env` file in the project root:
 
 ```env
 APP_PORT=8080
 APP_HOST=127.0.0.1
+FRONTEND_URL=http://localhost:5173
 
 DATABASE_URL=postgres://your-user:your-password@your-host:5432/your-database?sslmode=require
 ```
 
-Or use separate connection fields:
+`DB_DSN` and separate `DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USER`, `DB_PASSWORD`, `DB_SSLMODE` fields are also supported. If database variables are missing, the backend starts in preview mode with empty read data and database writes return `503`.
 
-```env
-APP_PORT=8080
-APP_HOST=127.0.0.1
+## Run Locally
 
-DB_HOST=your-postgres-host
-DB_PORT=5432
-DB_NAME=your-database-name
-DB_USER=your-database-user
-DB_PASSWORD=your-database-password
-DB_SSLMODE=require
-```
-
-`DB_DSN` is also supported if you prefer a Postgres DSN string. If database variables are missing, the app starts in preview mode with empty datasets.
-
-3. Review the expected database structure:
-
-```powershell
-Get-Content docs\database.txt
-```
-
-The app maps the documented `Cluster`, `User`, and `Request` tables through GORM models and runs `AutoMigrate` on startup.
-
-## Run
-
-Start the server:
+Start the backend API:
 
 ```powershell
 go run .\cmd\server
 ```
 
-Open the dashboard:
+In another terminal, start the frontend:
 
-```text
-http://localhost:8080/dashboard
+```powershell
+go run .\cmd\frontend
 ```
 
-If `APP_PORT` is changed in `.env`, use that port instead. `APP_HOST` defaults to `127.0.0.1` so local development does not require Windows firewall/admin changes. Use `APP_HOST=0.0.0.0` only when the app must be reachable from other machines and the firewall/network allows inbound traffic.
+Open:
 
-## Main Routes
+```text
+http://localhost:5173/dashboard.html
+```
 
-- `/` dashboard
-- `/dashboard` role-aware request stats and recent activity
-- `/outbound/lh-request` Ops PIC creation and FTE Ops approval queue
-- `/midmile/truck-request` FTE MM confirmation queue
+The frontend reads `frontend/config.js`. For local separated development, it points API calls to `http://localhost:8080`.
 
-Login validates FTE users by email and Backroom users by Ops ID against the `User` table. The dashboard also subscribes to `/api/events` through server-sent events for request workflow updates, while polling remains as a fallback.
+## Main Frontend Pages
+
+- `frontend/dashboard.html`
+- `frontend/lh-request.html`
+- `frontend/truck-request.html`
+- `frontend/dock-officer.html`
+- `frontend/settings.html`
+
+## Main Backend Routes
+
+- `GET /healthz`
+- `POST /api/login`
+- `GET /api/stats`
+- `GET /api/requests`
+- `POST /api/requests`
+- `GET /api/events`
+- `GET /api/realtime/notifications`
+
+Login validates FTE users by email and Backroom users by Ops ID against the `users` table. Request workflow updates use `/api/events` with polling fallbacks in the frontend.
 
 ## Test
 
@@ -83,15 +92,10 @@ Run all tests:
 go test ./...
 ```
 
-## Project Structure
+## Deployment
+
+For separated frontend/backend deployment notes, see:
 
 ```text
-cmd/server/              Application entry point
-internal/database/       Postgres connection setup
-internal/events/         In-process event bus for workflow events
-internal/handlers/       HTTP handlers
-internal/models/         GORM models
-internal/routes/         Echo route registration
-web/templates/           HTML templates
-docs/database.txt        Database table reference
+docs/deployment.md
 ```

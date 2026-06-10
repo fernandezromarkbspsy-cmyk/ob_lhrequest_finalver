@@ -6,9 +6,18 @@ import (
 )
 
 const (
-	RequestCreated       = "request.created"
-	RequestUpdated       = "request.updated"
-	RequestStatusChanged = "request.status_changed"
+	RequestCreated      = "REQUEST_CREATED"
+	RequestApproved     = "REQUEST_APPROVED"
+	RequestEdited       = "REQUEST_EDITED"
+	RequestCancelled    = "REQUEST_CANCELLED"
+	RequestRejectedByMM = "REQUEST_REJECTED_BY_MM"
+	TruckAssigned       = "TRUCK_ASSIGNED"
+	TruckForDocking     = "TRUCK_FOR_DOCKING"
+	TruckDocked         = "TRUCK_DOCKED"
+	RequestConfirmed    = "REQUEST_CONFIRMED"
+	UserCreated         = "USER_CREATED"
+	UserUpdated         = "USER_UPDATED"
+	UserDisabled        = "USER_DISABLED"
 )
 
 type Event struct {

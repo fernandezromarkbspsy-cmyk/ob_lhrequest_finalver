@@ -16,7 +16,8 @@ function Get-RelativePath {
 function Get-SourceFiles {
   Get-ChildItem -Path $Root -Recurse -File |
     Where-Object {
-      $_.FullName -notmatch "\\(\.git|server\.out\.log|server\.err\.log)$" -and
+      $_.FullName -notmatch "\\(\.git|\.gocache|server\.out\.log|server\.err\.log)$" -and
+      $_.FullName -notmatch "\\web\\" -and
       $_.FullName -notmatch "\\docs\\FUNCTIONS_SUMMARY\.md$" -and
       $_.FullName -notmatch "\\scripts\\update-functions-summary\.ps1$" -and
       $_.Extension -in @(".go", ".js", ".html", ".css", ".txt", ".md")
@@ -35,7 +36,7 @@ function New-FunctionSummary {
   $files = @(Get-SourceFiles)
   $goFiles = @($files | Where-Object { $_.Extension -eq ".go" })
   $jsFiles = @($files | Where-Object { $_.Extension -eq ".js" })
-  $templateFiles = @($files | Where-Object { $_.FullName -match "\\web\\templates\\" -and $_.Extension -eq ".html" })
+  $templateFiles = @($files | Where-Object { $_.FullName -match "\\frontend\\" -and $_.Extension -eq ".html" })
 
   $routes = New-Object System.Collections.Generic.List[object]
   $goFunctions = New-Object System.Collections.Generic.List[object]
@@ -77,10 +78,10 @@ function New-FunctionSummary {
 
   foreach ($file in $templateFiles) {
     $relative = Get-RelativePath $file.FullName
+    if ($templates.Name -notcontains $file.Name) {
+      $templates.Add([pscustomobject]@{ File = $relative; Name = $file.Name }) | Out-Null
+    }
     foreach ($line in Get-Content -Path $file.FullName) {
-      if ($line -match '{{define\s+"([^"]+)"}}') {
-        $templates.Add([pscustomobject]@{ File = $relative; Name = $Matches[1] }) | Out-Null
-      }
       foreach ($match in [regex]::Matches($line, 'data-[a-zA-Z0-9_-]+')) {
         $dataAttrs.Add($match.Value) | Out-Null
       }
@@ -109,24 +110,25 @@ function New-FunctionSummary {
   Add-Line $lines ""
   Add-Line $lines "## Project Purpose"
   Add-Line $lines ""
-  Add-Line $lines "This project is a Go/Echo linehaul dashboard with server-rendered HTML templates, GORM/Postgres persistence, and vanilla JavaScript for client-side request tables, modals, filtering, notifications, and role-specific actions."
+  Add-Line $lines "This project is a separated Go/Echo API backend and static frontend linehaul dashboard with GORM/Postgres persistence and vanilla JavaScript for client-side request tables, modals, filtering, notifications, and role-specific actions."
   Add-Line $lines ""
   Add-Line $lines "## Main Workflow"
   Add-Line $lines ""
   Add-Line $lines "- `Ops PIC` and `FTE Ops` create linehaul requests."
-  Add-Line $lines "- New requests start as `Pending` (`PENDING_OPS`) and appear across request views."
+  Add-Line $lines "- New requests start as `Pending` (`PENDING`) and appear across request views."
   Add-Line $lines "- `FTE Ops` can edit, cancel, or approve requests."
-  Add-Line $lines "- Approved requests route to `FTE MM` as `Approved` (`PENDING_MM`)."
+  Add-Line $lines "- Approved requests route to `FTE MM` as `Approved` (`APPROVED`)."
   Add-Line $lines "- `FTE MM` can reject back to FTE Ops, assign the truck, then assign plate details to move the request to `For Docking`."
   Add-Line $lines "- `Dock Officer` / `Doc Officer` handles `For Docking` requests by entering driver ID, LHTrip number, and docking time."
   Add-Line $lines "- Queue counts, notifications, and table statuses are shared across roles through `/api/stats` and `/api/requests`."
   Add-Line $lines ""
   Add-Line $lines "## Runtime Entry Points"
   Add-Line $lines ""
-  Add-Line $lines "- `cmd/server/main.go`: application startup, DB connection, GORM migration, workflow status constraint migration, Echo setup, static files, route registration, and template loading."
+  Add-Line $lines "- `cmd/server/main.go`: backend API startup, DB connection, GORM migration, workflow status constraint migration, Echo setup, CORS, and route registration."
+  Add-Line $lines "- `cmd/frontend/main.go`: local static frontend server for the `frontend` directory."
   Add-Line $lines "- `internal/routes/routes.go`: HTTP route map."
-  Add-Line $lines "- `internal/handlers/dashboard.go`: page handlers, API handlers, request lifecycle, stats, filtering, and response shaping."
-  Add-Line $lines "- `web/static/app.js`: browser behavior for login, role visibility, request modals, action modals, tables, notifications, CSV export, and theme/sidebar controls."
+  Add-Line $lines "- `internal/handlers/dashboard.go`: API handlers, request lifecycle, stats, filtering, and response shaping."
+  Add-Line $lines "- `frontend/static/app.js`: browser behavior for login, role visibility, request modals, action modals, tables, notifications, CSV export, and theme/sidebar controls."
   Add-Line $lines ""
   Add-Line $lines "## HTTP Routes"
   Add-Line $lines ""
@@ -160,9 +162,9 @@ function New-FunctionSummary {
     Add-Line $lines ("| ``{0}`` | ``{1}`` | {2} |" -f $item.Name, $item.File, $item.Line)
   }
   Add-Line $lines ""
-  Add-Line $lines "## Templates"
+  Add-Line $lines "## Frontend Pages"
   Add-Line $lines ""
-  Add-Line $lines "| Template | File |"
+  Add-Line $lines "| Page | File |"
   Add-Line $lines "|---|---|"
   foreach ($item in $templates) {
     Add-Line $lines ("| ``{0}`` | ``{1}`` |" -f $item.Name, $item.File)
@@ -178,17 +180,18 @@ function New-FunctionSummary {
   Add-Line $lines ""
   Add-Line $lines "- `Cluster`: cluster lookup data used by the New LH Request modal for cluster, region, dock, and backlogs mapping."
   Add-Line $lines "- `Request`: linehaul request lifecycle data, including status, truck details, plate number, driver ID, LHTrip number, and docking timestamps."
-  Add-Line $lines "- `User`: role-aware login identity for `ops_pic`, `fte_ops`, `fte_mm`, `dock_officer` / `doc_officer`, `data_team`, and `admin`."
+  Add-Line $lines "- `User`: role-aware login identity for `ops_pic`, `fte_ops`, `fte_mm`, and `dock_officer` / `doc_officer`."
   Add-Line $lines ""
   Add-Line $lines "## Status Values"
   Add-Line $lines ""
-  Add-Line $lines "- `PENDING_OPS`: shown as `Pending`; FTE Ops queue."
-  Add-Line $lines "- `PENDING_MM`: shown as `Approved`; FTE MM queue."
+  Add-Line $lines "- `PENDING`: shown as `Pending`; FTE Ops queue."
+  Add-Line $lines "- `APPROVED`: shown as `Approved`; FTE MM queue."
   Add-Line $lines "- `ASSIGNED`: shown as `Assigned`; plate assignment step."
   Add-Line $lines "- `FOR_DOCKING`: shown as `For Docking`; Dock Officer queue."
-  Add-Line $lines "- `CONFIRMED`: retained for compatibility with existing data."
-  Add-Line $lines "- `REJECTED`: rejected by FTE MM and routed back to FTE Ops."
-  Add-Line $lines "- `CANCELED`: canceled by FTE Ops."
+  Add-Line $lines "- `DOCKED`: docked truck awaiting confirmation."
+  Add-Line $lines "- `CONFIRMED`: completed request."
+  Add-Line $lines "- `REJECTED_BY_MM`: rejected by FTE MM and routed back to FTE Ops."
+  Add-Line $lines "- `CANCELLED`: canceled request."
   Add-Line $lines ""
 
   $directory = Split-Path -Parent $OutputPath
