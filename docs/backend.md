@@ -2,7 +2,7 @@
 
 ## Overview
 
-The backend is a Go/Echo API application. It serves JSON API endpoints, QR images, and server-sent events. The browser UI is a separate static frontend under `frontend/`.
+The backend is a Go API application using Chi for routing. It serves JSON API endpoints, QR images, Server-Sent Events, and WebSockets. The browser UI is a separate static frontend under `frontend/`.
 
 Data is stored in PostgreSQL through GORM. Supabase Postgres is the expected hosted database, but any compatible Postgres database can work.
 
@@ -14,14 +14,35 @@ cmd/frontend/main.go      local static frontend server
 frontend/                 static browser app
 internal/database/        Postgres/GORM connection setup
 internal/routes/          API route registration
-internal/handlers/        API handlers, auth, request workflow, user management
+internal/features/        Feature packages with controller/service/repository layers
+internal/cache/           Short-lived in-memory API response cache
+internal/jobs/            Background job queue
 internal/events/          in-process pub/sub bus for request workflow SSE
 internal/models/          GORM models for clusters, users, requests, events, notifications, OTPs
 web/                       legacy frontend source kept for reference
 docs/database.txt         database table reference
 ```
 
-There is currently no separate `services` or `middleware` package. Most backend behavior is implemented in `internal/handlers/dashboard.go`, with SSE helpers in `internal/handlers/events.go`.
+Active feature packages are grouped by domain:
+
+```text
+internal/features/auth/
+internal/features/requests/
+internal/features/users/
+internal/features/clusters/
+internal/features/notifications/
+internal/features/realtime/
+internal/features/qr/
+```
+
+Each feature follows the project rule:
+
+```text
+controller.go  HTTP only
+service.go     business logic only
+repository.go  database access only
+types.go       DTOs and local feature types
+```
 
 ## Environment
 
@@ -37,6 +58,7 @@ There is currently no separate `services` or `middleware` package. Most backend 
 | `APP_PORT` | No | Local port fallback, defaults to `8080`. |
 | `APP_HOST` | No | Bind host, defaults to `127.0.0.1`. |
 | `APP_ENV` | No | Set to `production` to mark auth cookies as secure. |
+| `RATE_LIMIT_PER_MINUTE` | No | Per-client API rate limit, defaults to `120`. |
 
 If database variables are missing, the app starts with `database.DB == nil` and several read paths return empty preview data. Mutating database APIs return `503 Database is not configured`.
 
@@ -52,8 +74,9 @@ If database variables are missing, the app starts with `database.DB == nil` and 
    - `notifications`
    - `user_otps`
 4. `ensureWorkflowConstraints` normalizes legacy request statuses and recreates request status and user role check constraints.
-5. Echo is configured with CORS and registered API routes.
-6. The server binds to `APP_HOST:PORT` or `APP_HOST:APP_PORT`.
+5. Background job workers start for async side effects.
+6. Chi is configured with CORS, security headers, rate limiting, request timeouts, and registered API routes.
+7. The server binds to `APP_HOST:PORT` or `APP_HOST:APP_PORT`.
 
 ## Auth
 
@@ -87,7 +110,7 @@ Cookie properties:
 - `Secure` only when `APP_ENV=production`
 - JWT expiry is 12 hours
 
-Important gap: API routes are not protected by centralized Echo middleware. Handlers that need identity call `readSessionClaims` directly. Many workflow APIs currently rely on frontend role gating and payload rules rather than server-side role middleware.
+Auth controllers stay HTTP-focused and call the auth service for login, OTP, password, and session logic. Password and OTP hashes use bcrypt.
 
 ## Frontend Boundary
 
@@ -106,7 +129,7 @@ The frontend uses `frontend/config.js` to choose its API origin. Local separate 
 | `GET` | `/healthz` | Backend health check. |
 | `GET` | `/api/stats` | Dashboard counters. |
 | `GET` | `/api/request-trend` | Hourly request trend data. |
-| `GET` | `/api/requests` | List/filter requests. |
+| `GET` | `/api/requests` | Server-side paginated and filtered requests. |
 | `POST` | `/api/requests` | Create request. |
 | `GET` | `/api/requests/:id` | Fetch one request. |
 | `PUT` | `/api/requests/:id` | Edit request. |
@@ -125,6 +148,9 @@ The frontend uses `frontend/config.js` to choose its API origin. Local separate 
 | `GET` | `/api/requests/:id/events` | Request event history. |
 | `GET` | `/api/clusters` | Cluster lookup options. |
 | `GET` | `/api/qr` | Driver QR PNG. |
+| `GET` | `/api/events` | Workflow SSE stream. |
+| `GET` | `/api/ws` | Workflow WebSocket stream. |
+| `GET` | `/api/realtime/notifications` | Notification SSE stream. |
 
 ## Workflow Statuses
 

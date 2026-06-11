@@ -5,7 +5,7 @@ This guide covers deploying the SOC 5 outbound dashboard as a separated frontend
 The project now has two runtime surfaces:
 
 - Backend: Go/Echo API and SSE server from `cmd/server`.
-- Frontend: static HTML/CSS/JS app from `frontend/`.
+- Frontend: Gentelella-inspired vanilla JS static app from `frontend/`.
 
 ## Deployment Target
 
@@ -15,6 +15,18 @@ Recommended setup:
 - Backend hosting: a Go-capable host such as Vercel Go runtime, Render, Fly.io, Railway, or another container/server host
 - Database: Supabase Postgres
 - Deployment type while in development: Preview deployment first, then Production when the workflow is verified
+
+For an AWS EC2 backend setup with Nginx, systemd, and HTTPS, see:
+
+```text
+docs/aws-deployment.md
+```
+
+For deploying only the static frontend to Vercel, see:
+
+```text
+docs/vercel-frontend.md
+```
 
 Important Vercel behavior:
 
@@ -37,7 +49,7 @@ Before deploying, confirm these items:
 
 - `go.mod` and `go.sum` are committed.
 - `cmd/server/main.go` and `cmd/frontend/main.go` are committed.
-- `frontend`, including `frontend/static` and `frontend/truck_label`, is committed.
+- `frontend`, including `frontend/static/gentelella.css`, `frontend/static/app.js`, and `frontend/truck_label`, is committed.
 - `.env` is not committed.
 - Supabase database is created.
 - Required tables can be created or migrated by the app.
@@ -77,6 +89,8 @@ This keeps local backend development on `127.0.0.1:8080`, while allowing hosted 
 
 ## Frontend Configuration
 
+The frontend is the Gentelella-inspired vanilla JS dashboard in `frontend/`. It is deployed as static files because browsers still load HTML entry files, CSS, JavaScript, and image assets directly.
+
 The frontend API origin is configured in:
 
 ```text
@@ -102,6 +116,14 @@ On the backend host, set:
 ```env
 FRONTEND_URL=https://your-frontend.example.com
 ```
+
+If you have not deployed the frontend yet, keep using the local value while testing:
+
+```env
+FRONTEND_URL=http://localhost:5173
+```
+
+After the frontend is deployed, replace it with the exact frontend origin shown in the browser, including `https://` and without a trailing path.
 
 ## Supabase Database Setup
 
@@ -246,6 +268,12 @@ For Preview and Production:
 DATABASE_URL=postgres://your-user:your-password@your-host:5432/your-database?sslmode=require
 APP_ENV=production
 FRONTEND_URL=https://your-frontend.example.com
+```
+
+Use the placeholder `FRONTEND_URL` only after the frontend has been deployed. If the backend is deployed first, leave `FRONTEND_URL` unset until the frontend URL exists, or set it temporarily to the local frontend origin while testing from your machine:
+
+```env
+FRONTEND_URL=http://localhost:5173
 ```
 
 Usually do not set these on Vercel:

@@ -17,6 +17,8 @@ function Get-SourceFiles {
   Get-ChildItem -Path $Root -Recurse -File |
     Where-Object {
       $_.FullName -notmatch "\\(\.git|\.gocache|server\.out\.log|server\.err\.log)$" -and
+      $_.FullName -notmatch "\\node_modules\\" -and
+      $_.FullName -notmatch "\\dist\\" -and
       $_.FullName -notmatch "\\web\\" -and
       $_.FullName -notmatch "\\docs\\FUNCTIONS_SUMMARY\.md$" -and
       $_.FullName -notmatch "\\scripts\\update-functions-summary\.ps1$" -and
@@ -56,7 +58,7 @@ function New-FunctionSummary {
       if ($line -match '^\s*type\s+([A-Za-z_][A-Za-z0-9_]*)\s+struct\s*\{') {
         $goStructs.Add([pscustomobject]@{ File = $relative; Line = $lineNo; Name = $Matches[1] }) | Out-Null
       }
-      if ($line -match 'e\.(GET|POST|PUT|PATCH|DELETE)\("([^"]+)",\s*handlers\.([A-Za-z_][A-Za-z0-9_]*)\)') {
+      if ($line -match 'r\.(Get|Post|Put|Patch|Delete)\("([^"]+)",\s*echoHandler\(([^),]+)') {
         $routes.Add([pscustomobject]@{ Method = $Matches[1]; Path = $Matches[2]; Handler = $Matches[3] }) | Out-Null
       }
     }
@@ -110,7 +112,7 @@ function New-FunctionSummary {
   Add-Line $lines ""
   Add-Line $lines "## Project Purpose"
   Add-Line $lines ""
-  Add-Line $lines "This project is a separated Go/Echo API backend and static frontend linehaul dashboard with GORM/Postgres persistence and vanilla JavaScript for client-side request tables, modals, filtering, notifications, and role-specific actions."
+  Add-Line $lines "This project is a separated Go/Chi API backend and static frontend linehaul dashboard with GORM/Postgres persistence, feature-based controller/service/repository packages, realtime events, caching, background jobs, and vanilla JavaScript for the current client."
   Add-Line $lines ""
   Add-Line $lines "## Main Workflow"
   Add-Line $lines ""
@@ -124,11 +126,11 @@ function New-FunctionSummary {
   Add-Line $lines ""
   Add-Line $lines "## Runtime Entry Points"
   Add-Line $lines ""
-  Add-Line $lines "- `cmd/server/main.go`: backend API startup, DB connection, GORM migration, workflow status constraint migration, Echo setup, CORS, and route registration."
-  Add-Line $lines "- `cmd/frontend/main.go`: local static frontend server for the `frontend` directory."
+  Add-Line $lines "- `cmd/server/main.go`: backend API startup, DB connection, GORM migration, background workers, Chi setup, CORS, security headers, rate limiting, and route registration."
+  Add-Line $lines '- `cmd/frontend/main.go`: local static frontend server for the `frontend` directory.'
   Add-Line $lines "- `internal/routes/routes.go`: HTTP route map."
-  Add-Line $lines "- `internal/handlers/dashboard.go`: API handlers, request lifecycle, stats, filtering, and response shaping."
-  Add-Line $lines "- `frontend/static/app.js`: browser behavior for login, role visibility, request modals, action modals, tables, notifications, CSV export, and theme/sidebar controls."
+  Add-Line $lines "- `internal/features/*`: feature packages using controller/service/repository layers."
+  Add-Line $lines '- `frontend/static/app.js`: browser behavior for login, role visibility, request modals, action modals, tables, notifications, CSV export, and theme/sidebar controls.'
   Add-Line $lines ""
   Add-Line $lines "## HTTP Routes"
   Add-Line $lines ""

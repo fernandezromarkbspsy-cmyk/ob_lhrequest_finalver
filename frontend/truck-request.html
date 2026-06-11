@@ -255,17 +255,7 @@
         </tr>
       </thead>
       <tbody data-request-table>
-        -</td>
-            <td>{{if .DriverID}}{{.DriverID}}{{else}}-{{end}}</td>
-            <td>{{if .LinehaulTripNo}}{{.LinehaulTripNo}}{{else}}-{{end}}</td>
-            <td>{{if .DockingTime}}{{.DockingTime}}{{else}}-{{end}}</td>
-            <td><span class="status-pill {{.Status}}">{{.StatusLabel}}</span></td>
-            <td><span class="muted">Loading</span></td>
-          </tr>
-          {{end}}
-        {{else}}
-          <tr><td colspan="12" class="empty-state">No truck requests found.</td></tr>
-        {{end}}
+        <tr><td colspan="12" class="empty-state">No truck requests found.</td></tr>
       </tbody>
     </table>
   </div>

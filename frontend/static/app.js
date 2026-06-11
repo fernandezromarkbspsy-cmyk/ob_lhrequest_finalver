@@ -22,6 +22,7 @@
     clusters: [],
     page: 1,
     perPage: 12,
+    totalRows: 0,
     sortKey: "request_date",
     sortDirection: "desc",
     inlineRequestOpen: false,
@@ -360,16 +361,16 @@
     const prev = document.querySelector("[data-page-prev]");
     const next = document.querySelector("[data-page-next]");
     if (prev) {
-      prev.addEventListener("click", () => {
+      prev.addEventListener("click", async () => {
         state.page = Math.max(1, state.page - 1);
-        renderTable();
+        await fetchRequests();
       });
     }
     if (next) {
-      next.addEventListener("click", () => {
-        const max = Math.max(1, Math.ceil(state.rows.length / state.perPage));
+      next.addEventListener("click", async () => {
+        const max = Math.max(1, Math.ceil(state.totalRows / state.perPage));
         state.page = Math.min(max, state.page + 1);
-        renderTable();
+        await fetchRequests();
       });
     }
 
@@ -519,15 +520,19 @@
     addParam(params, "search", valueOf("[data-filter-search]"));
     addParam(params, "date_from", valueOf("[data-filter-from]"));
     addParam(params, "date_to", valueOf("[data-filter-to]"));
+    params.set("page", String(state.page));
+    params.set("per_page", String(state.perPage));
 
     setTableLoading(true);
     try {
       const response = await fetch(apiPath("/api/requests?" + params.toString()));
       const body = await response.json().catch(() => ({ requests: [] }));
       state.rows = Array.isArray(body.requests) ? body.requests : [];
+      state.totalRows = Number(body.total || state.rows.length || 0);
       renderTable();
     } catch (_) {
       state.rows = [];
+      state.totalRows = 0;
       renderTable();
     } finally {
       setTableLoading(false);
@@ -692,11 +697,9 @@
       return;
     }
 
-    const rows = [...state.rows].sort((a, b) => compareRows(a, b, state.sortKey, state.sortDirection));
-    const maxPage = Math.max(1, Math.ceil(rows.length / state.perPage));
+    const visible = [...state.rows].sort((a, b) => compareRows(a, b, state.sortKey, state.sortDirection));
+    const maxPage = Math.max(1, Math.ceil(state.totalRows / state.perPage));
     state.page = Math.min(state.page, maxPage);
-    const start = (state.page - 1) * state.perPage;
-    const visible = rows.slice(start, start + state.perPage);
 
     if (visible.length === 0) {
       tbody.innerHTML = state.inlineRequestOpen

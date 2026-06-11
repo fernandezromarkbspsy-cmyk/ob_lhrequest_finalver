@@ -250,7 +250,7 @@
       <a class="priority-row exception" href="./lh-request.html">
         <span class="priority-icon"><span class="ui-icon icon-xcircle" aria-hidden="true"></span></span>
         <span><strong>Exceptions</strong><small>REJECTED_BY_MM or CANCELLED requests</small></span>
-        <b data-stat-REJECTED_BY_MM>{{.Stats.Rejected}}</b>
+        <b data-stat-REJECTED_BY_MM>0</b>
       </a>
     </div>
   </aside>
@@ -270,7 +270,7 @@
         <a href="./lh-request.html?status=PENDING"><i class="pending-color"></i><span>Ops</span><strong data-stat-pending-ops>0</strong></a>
         <a href="./truck-request.html?status=APPROVED"><i class="blue-color"></i><span>Midmile</span><strong data-stat-pending-mm>0</strong></a>
         <a href="./dock-officer.html?status=FOR_DOCKING"><i class="requested-color"></i><span>Dock</span><strong data-stat-for-docking>0</strong></a>
-        <a href="./lh-request.html?status=REJECTED_BY_MM"><i class="REJECTED_BY_MM-color"></i><span>Exceptions</span><strong data-stat-REJECTED_BY_MM>{{.Stats.Rejected}}</strong></a>
+        <a href="./lh-request.html?status=REJECTED_BY_MM"><i class="REJECTED_BY_MM-color"></i><span>Exceptions</span><strong data-stat-REJECTED_BY_MM>0</strong></a>
       </div>
     </div>
   </article>
@@ -341,12 +341,7 @@
     </div>
 
     <div class="activity-list" data-activity-list>
-      No plate</span>
-        </div>
-        {{end}}
-      {{else}}
-        <div class="empty-state">No recent request activity.</div>
-      {{end}}
+      <div class="empty-state">No recent request activity.</div>
     </div>
   </section>
 </section>
