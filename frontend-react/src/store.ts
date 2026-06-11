@@ -1,13 +1,9 @@
 import { create } from "zustand";
-
-type SessionUser = {
-  name: string;
-  role: string;
-};
+import { Queue, SessionUser } from "./api";
 
 type AppState = {
   user: SessionUser | null;
-  queue: "all" | "ops" | "mm" | "dock";
+  queue: Queue;
   setUser: (user: SessionUser | null) => void;
   setQueue: (queue: AppState["queue"]) => void;
 };

@@ -3,6 +3,8 @@ package main
 import (
 	"log"
 	"net/http"
+	"net/http/httputil"
+	"net/url"
 	"os"
 	"strings"
 )
@@ -10,7 +12,7 @@ import (
 func main() {
 	dir := os.Getenv("FRONTEND_DIR")
 	if dir == "" {
-		dir = "frontend"
+		dir = "frontend-react/dist"
 	}
 
 	port := os.Getenv("FRONTEND_PORT")
@@ -24,11 +26,29 @@ func main() {
 	}
 
 	mux := http.NewServeMux()
+	if proxy := apiProxy(); proxy != nil {
+		mux.Handle("/api/", proxy)
+		mux.Handle("/api", proxy)
+		mux.Handle("/healthz", proxy)
+	}
 	mux.Handle("/", spaFileServer(http.Dir(dir)))
 
 	addr := host + ":" + port
 	log.Println("Frontend running on", addr)
 	log.Fatal(http.ListenAndServe(addr, mux))
+}
+
+func apiProxy() http.Handler {
+	target := os.Getenv("FRONTEND_API_URL")
+	if target == "" {
+		target = "http://127.0.0.1:8080"
+	}
+	targetURL, err := url.Parse(target)
+	if err != nil {
+		log.Println("API proxy disabled:", err)
+		return nil
+	}
+	return httputil.NewSingleHostReverseProxy(targetURL)
 }
 
 func spaFileServer(root http.FileSystem) http.Handler {

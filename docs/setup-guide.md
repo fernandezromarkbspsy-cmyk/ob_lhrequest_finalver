@@ -1,12 +1,12 @@
 # Setup Guide
 
-This project implements the truck request portal guide with a free-first stack: Go + Chi API, Supabase Postgres, static frontend, optional React + TypeScript frontend, Docker, NGINX, GitHub Actions, and optional free-tier integrations.
+This project implements the truck request portal guide with a free-first stack: Go + Chi API, Supabase Postgres, React + TypeScript frontend, optional Docker/NGINX, GitHub Actions, and optional free-tier integrations.
 
 ## Local Requirements
 
 - Go 1.25+
 - Node.js 22+ for `frontend-react`
-- Docker Desktop for containerized runs
+- Docker Desktop, optional for containerized runs
 - A Supabase Postgres project
 - GitHub account for CI/CD
 - Optional accounts: Clerk, Resend, PostHog, Sentry, Upstash, Pinecone, Better Stack, Cloudflare, Namecheap, Vercel
@@ -29,6 +29,8 @@ FRONTEND_URL=http://localhost:5173
 JWT_SECRET=replace-with-a-long-random-secret
 DATABASE_URL=postgres://user:password@db.project-ref.supabase.co:5432/postgres?sslmode=require
 RATE_LIMIT_PER_MINUTE=120
+FRONTEND_DIR=frontend-react/dist
+FRONTEND_API_URL=http://127.0.0.1:8080
 ```
 
 Optional integrations stay disabled until their keys are present:
@@ -44,7 +46,7 @@ PINECONE_API_KEY=
 BETTER_STACK_SOURCE_TOKEN=
 ```
 
-## Run Current App Locally
+## Run App Locally
 
 Backend:
 
@@ -52,21 +54,7 @@ Backend:
 go run .\cmd\server
 ```
 
-Frontend:
-
-```powershell
-go run .\cmd\frontend
-```
-
-Open:
-
-```text
-http://localhost:5173/dashboard.html
-```
-
-## Run React + TypeScript Frontend
-
-The modern frontend scaffold lives in `frontend-react`.
+React frontend:
 
 ```powershell
 Set-Location frontend-react
@@ -77,14 +65,25 @@ npm run dev
 Open:
 
 ```text
-http://localhost:5174
+http://localhost:5173
 ```
 
 The Vite proxy sends `/api` and `/healthz` requests to `http://127.0.0.1:8080`.
 
+To serve the production React build through Go:
+
+```powershell
+Set-Location frontend-react
+npm run build
+Set-Location ..
+go run .\cmd\frontend
+```
+
+`cmd/frontend` serves `frontend-react/dist` and proxies `/api` and `/healthz` to `FRONTEND_API_URL`.
+
 ## Docker + NGINX
 
-Run API, frontend, and NGINX reverse proxy:
+Docker is optional. If Docker Desktop is available, run API, React frontend build, and NGINX reverse proxy:
 
 ```powershell
 docker compose up --build
@@ -168,13 +167,13 @@ It runs:
 - `go test ./...`
 - `go build ./cmd/server`
 - `go build ./cmd/frontend`
-- `npm install`
+- `npm ci`
 - `npm run build` in `frontend-react`
 
 ## Deployment Notes
 
 - Supabase hosts Postgres.
-- Vercel can host `frontend-react` or the static frontend.
+- Vercel can host the React frontend.
 - Cloudflare manages DNS.
 - Namecheap can provide the domain.
 - Better Stack can monitor `/healthz`.

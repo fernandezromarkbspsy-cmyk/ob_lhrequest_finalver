@@ -10,23 +10,23 @@ SOC 5 outbound linehaul truck request portal. The app replaces spreadsheet-based
 - Dashboard stats, request trend data, notifications, and request event history.
 - Server-sent events for realtime updates with frontend polling fallback.
 - API rate limiting, security headers, CORS configuration, and static asset cache headers.
-- Dockerized backend, static frontend, and optional local Nginx reverse proxy.
-- Deployment guides for AWS EC2 backend and Vercel/static frontend hosting.
+- Dockerized backend, React frontend, and optional local Nginx reverse proxy.
+- Deployment guides for AWS EC2 backend and Vercel frontend hosting.
 
 ## Requirements
 
 - Go 1.25 or newer
+- Node.js 22 or newer for the React frontend
 - Postgres database, such as Supabase Postgres
 - Docker Desktop, optional for containerized local runs
-- Node.js, optional only for the `frontend-react/` prototype
 
 ## Project Layout
 
 ```text
 cmd/server/              Go API and SSE backend
-cmd/frontend/            Local static frontend server
-frontend/                Main Gentelella-inspired vanilla JS frontend
-frontend-react/          Optional React/Vite frontend prototype
+cmd/frontend/            Serves the built React frontend for local/prod preview
+frontend-react/          Active React/Vite frontend
+frontend/                Legacy vanilla JS frontend kept for reference
 internal/database/       Postgres connection setup
 internal/events/         In-process event bus for workflow updates
 internal/features/       Feature packages with controller/service/repository layers
@@ -65,7 +65,8 @@ DATABASE_URL=postgres://user:password@db.project-ref.supabase.co:5432/postgres?s
 
 FRONTEND_HOST=127.0.0.1
 FRONTEND_PORT=5173
-FRONTEND_DIR=frontend
+FRONTEND_DIR=frontend-react/dist
+FRONTEND_API_URL=http://127.0.0.1:8080
 ```
 
 `DB_DSN` and separate `DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USER`, `DB_PASSWORD`, and `DB_SSLMODE` values are also supported. If database variables are missing, the backend starts in preview mode with empty read data and database writes return `503`.
@@ -78,27 +79,40 @@ Start the backend API:
 go run .\cmd\server
 ```
 
-Start the static frontend in another terminal:
+Start the React dev server in another terminal:
 
 ```powershell
-go run .\cmd\frontend
+Set-Location frontend-react
+npm install
+npm run dev
 ```
 
 Open:
 
 ```text
-http://localhost:5173/dashboard.html
+http://localhost:5173
 ```
 
-The frontend uses `frontend/config.js` to choose its backend API origin. For separated local development on port `5173`, it calls:
+The Vite dev server proxies `/api` and `/healthz` to:
 
 ```text
 http://localhost:8080
 ```
 
+To serve a production React build through Go:
+
+```powershell
+Set-Location frontend-react
+npm run build
+Set-Location ..
+go run .\cmd\frontend
+```
+
+`cmd/frontend` serves `frontend-react/dist` and proxies `/api` and `/healthz` to `FRONTEND_API_URL`.
+
 ## Docker Compose
 
-Run the backend, static frontend, and Nginx reverse proxy:
+Run the backend, React frontend build, and Nginx reverse proxy:
 
 ```powershell
 docker compose up --build
@@ -108,7 +122,7 @@ Local services:
 
 ```text
 Backend API:      http://localhost:8080
-Static frontend:  http://localhost:5173
+React frontend:   http://localhost:5173
 Nginx proxy:      http://localhost:8088
 ```
 
@@ -117,30 +131,12 @@ The Docker setup uses `Dockerfile` build targets:
 - `backend`: builds and runs `cmd/server`
 - `frontend`: builds and runs `cmd/frontend`
 
-## Optional React Frontend
+## Main Frontend Surface
 
-`frontend-react/` is a Vite/React prototype that uses React Query, Zustand, Clerk, Sentry, PostHog, and Sass dependencies. It is separate from the main static frontend.
-
-```powershell
-cd frontend-react
-npm install
-npm run dev
-```
-
-The React dev server defaults to:
-
-```text
-http://127.0.0.1:5174
-```
-
-## Main Static Frontend Pages
-
-- `frontend/index.html`
-- `frontend/dashboard.html`
-- `frontend/lh-request.html`
-- `frontend/truck-request.html`
-- `frontend/dock-officer.html`
-- `frontend/settings.html`
+- `frontend-react/src/App.tsx`
+- `frontend-react/src/api.ts`
+- `frontend-react/src/store.ts`
+- `frontend-react/src/styles.scss`
 
 ## Main Backend Routes
 
@@ -217,10 +213,10 @@ Run all Go tests:
 go test ./...
 ```
 
-Build the optional React frontend:
+Build the React frontend:
 
 ```powershell
-cd frontend-react
+Set-Location frontend-react
 npm run build
 ```
 
@@ -238,7 +234,7 @@ AWS EC2 backend with Nginx, systemd, and HTTPS:
 docs/aws-deployment.md
 ```
 
-Vercel static frontend deployment:
+Vercel frontend deployment:
 
 ```text
 docs/vercel-frontend.md

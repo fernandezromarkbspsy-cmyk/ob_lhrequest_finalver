@@ -18,6 +18,7 @@ services:
     environment:
       FRONTEND_HOST: 0.0.0.0
       FRONTEND_PORT: 5173
+      FRONTEND_API_URL: http://api:8080
     ports:
       - "5173:5173"
     depends_on:

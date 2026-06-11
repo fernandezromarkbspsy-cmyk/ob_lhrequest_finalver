@@ -10,7 +10,7 @@ Browser -> NGINX -> Chi API -> Service/handler logic -> Repository queries -> Su
                      +-> Event bus -> SSE clients
 ```
 
-The current frontend is a static, dependency-light app served by `cmd/frontend`. The guide's React + TypeScript stack can be introduced screen by screen because the API contract is already JSON-based.
+The current frontend is the React + TypeScript app in `frontend-react`. Local development uses Vite on port `5173`; production preview and Docker builds serve `frontend-react/dist` through `cmd/frontend`.
 
 ## Request Flow
 
