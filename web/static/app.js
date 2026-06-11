@@ -235,7 +235,7 @@
         const response = await fetch("/api/login", jsonOptions(payload));
         const body = await response.json().catch(() => ({}));
         if (!response.ok) {
-          throw new Error(body.message || "Invalid credentials");
+          throw new Error(body.error || body.message || "Invalid credentials");
         }
 
         saveUser(body);
@@ -293,7 +293,7 @@
           const response = await fetch(url, jsonOptions(formToObject(requestForm)));
           const body = await response.json().catch(() => ({}));
           if (!response.ok) {
-            throw new Error(body.message || (id ? "Unable to update request" : "Unable to create request"));
+            throw new Error(body.error || body.message || (id ? "Unable to update request" : "Unable to create request"));
           }
           closeModal(requestModal);
           requestForm.reset();
@@ -414,7 +414,7 @@
           const response = await fetch("/api/users", jsonOptions(formToObject(form)));
           const body = await response.json().catch(() => ({}));
           if (!response.ok) {
-            throw new Error(body.message || "Unable to add role");
+            throw new Error(body.error || body.message || "Unable to add role");
           }
           form.reset();
           if (actorRole) {
@@ -468,7 +468,7 @@
         const response = await fetch(`/api/requests/${id}/${action}`, jsonOptions(formToObject(form)));
         const body = await response.json().catch(() => ({}));
         if (!response.ok) {
-          throw new Error(body.message || "Unable to update request");
+          throw new Error(body.error || body.message || "Unable to update request");
         }
         closeModal(modal);
         toast("Request updated");
@@ -732,12 +732,12 @@
     const id = Number(row.id);
     const buttons = [];
 
-    if (role === "fte_ops" && (row.status === "PENDING_OPS" || row.status === "REJECTED")) {
+    if (role === "fte_ops" && (row.status === "PENDING" || row.status === "REJECTED_BY_MM")) {
       buttons.push(rowButton("edit", "Edit", `data-edit-request data-row-id="${id}"`));
       buttons.push(rowButton("check", "Approve", `data-row-action="approve" data-row-id="${id}"`));
       buttons.push(rowButton("close", "Cancel", `data-row-action="cancel" data-row-id="${id}"`));
     }
-    if (role === "fte_mm" && row.status === "PENDING_MM") {
+    if (role === "fte_mm" && row.status === "APPROVED") {
       buttons.push(rowButton("user-plus", "Assign", `data-row-action="assign" data-row-id="${id}"`));
       buttons.push(rowButton("xcircle", "Reject", `data-row-action="reject" data-row-id="${id}"`));
     }
@@ -832,7 +832,7 @@
       setFormValue(form, "region", row.region);
       setFormValue(form, "dock_no", row.dock_no);
       setFormValue(form, "backlogs", Number(row.backlogs || 0));
-      setFormValue(form, "truck_size", row.truck_size || "6WH");
+      setFormValue(form, "truck_size", row.truck_size || "6W");
       setFormValue(form, "truck_type", row.truck_type);
       setFormValue(form, "ob_ops_pic", row.ob_ops_pic);
       setRequestModalMode("Edit LH Request", "Save");
@@ -918,19 +918,23 @@
         <td data-col="truck">
           <div class="inline-truck-fields">
             <select form="${formID}" name="truck_size" ${disabled}>
-              <option value="6WH">6WH</option>
+              <option value="6W">6W</option>
               <option value="6WF">6WF</option>
-              <option value="4WH">4WH</option>
-              <option value="10WH">10WH</option>
+              <option value="4W">4W</option>
+              <option value="10W">10W</option>
             </select>
-            <input form="${formID}" name="truck_type" placeholder="Type" ${disabled}>
+            <select form="${formID}" name="truck_type" ${disabled}>
+              <option value="">Type</option>
+              <option value="WETLEASE">WETLEASE</option>
+              <option value="DRYLEASE">DRYLEASE</option>
+            </select>
           </div>
         </td>
         <td data-col="plate" class="muted">-</td>
         <td data-col="driver" class="muted">-</td>
         <td data-col="trip" class="muted">-</td>
         <td data-col="docking" class="muted">-</td>
-        <td data-col="status"><span class="status-pill PENDING_OPS">Draft</span></td>
+        <td data-col="status"><span class="status-pill PENDING">Draft</span></td>
         <td data-col="actions">
           <div class="row-actions">
             <button type="submit" form="${formID}" ${disabled}><span class="ui-icon icon-check" aria-hidden="true"></span><span>${saving ? "Saving" : "Create"}</span></button>
@@ -970,7 +974,7 @@
         const response = await fetch("/api/requests", jsonOptions(payload));
         const body = await response.json().catch(() => ({}));
         if (!response.ok) {
-          throw new Error(body.message || "Unable to create request");
+          throw new Error(body.error || body.message || "Unable to create request");
         }
 
         state.inlineRequestOpen = false;
@@ -989,8 +993,12 @@
 
   function clusterOptionsHTML() {
     return `<option value="">Select cluster</option>` + state.clusters.map((item, index) => (
-      `<option value="${escapeHTML(item.cluster)}" data-cluster-index="${index}">${escapeHTML(item.cluster)}</option>`
+      `<option value="${escapeHTML(item.cluster)}" data-cluster-index="${index}">${escapeHTML(clusterOptionLabel(item))}</option>`
     )).join("");
+  }
+
+  function clusterOptionLabel(item) {
+    return [item.cluster, item.hub_name].filter(Boolean).join(" - ");
   }
 
   function bindRequestDetailModal() {
@@ -1053,15 +1061,15 @@
   }
 
   function buildTimeline(row) {
-    const order = ["PENDING_OPS", "PENDING_MM", "ASSIGNED", "FOR_DOCKING", "DOCKED"];
-    const currentIndex = Math.max(0, order.indexOf(row.status || "PENDING_OPS"));
+    const order = ["PENDING", "APPROVED", "ASSIGNED", "FOR_DOCKING", "DOCKED"];
+    const currentIndex = Math.max(0, order.indexOf(row.status || "PENDING"));
     return [
       { label: "Created", state: "Requested", value: row.request_timestamp, done: true },
-      { label: "Ops Approval", state: "Pending Ops", value: row.ob_fte || "", done: currentIndex >= 1 || row.status === "REJECTED" },
+      { label: "Ops Approval", state: "Pending Ops", value: row.ob_fte || "", done: currentIndex >= 1 || row.status === "REJECTED_BY_MM" },
       { label: "Midmile Assignment", state: "Pending MM", value: row.midmile_fte || "", done: currentIndex >= 2 },
       { label: "Plate Assigned", state: "For Docking", value: row.plate_number || "", done: currentIndex >= 3 },
       { label: "Docked", state: "Docked", value: row.docking_time || "", done: currentIndex >= 4 },
-      { label: "Exception", state: "Rejected/Canceled", value: row.remarks || "", done: row.status === "REJECTED" || row.status === "CANCELED" },
+      { label: "Exception", state: "REJECTED_BY_MM/CANCELLED", value: row.remarks || "", done: row.status === "REJECTED_BY_MM" || row.status === "CANCELLED" },
     ];
   }
 
@@ -1266,8 +1274,8 @@
     try {
       const response = await fetch("/api/stats");
       const stats = await response.json();
-      const ops = Number(stats.pending_ops || 0);
-      const mm = Number(stats.pending_mm || 0);
+      const ops = Number(stats.PENDING || 0);
+      const mm = Number(stats.APPROVED || 0);
       const dock = Number(stats.for_docking || 0);
       setBadge("ops", ops);
       setBadge("mm", mm);
@@ -1650,10 +1658,6 @@
       case "dock_officer":
       case "doc_officer":
         return "Dock Officer";
-      case "data_team":
-        return "Data Team";
-      case "admin":
-        return "Admin";
       default:
         return role || "Guest";
     }

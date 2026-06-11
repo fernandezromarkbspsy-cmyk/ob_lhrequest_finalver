@@ -1,0 +1,441 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dashboard | SOC 5 Outbound</title>
+  <link rel="stylesheet" href="./static/app.css">
+  <link rel="stylesheet" href="./static/gentelella.css">
+  <script>
+    (function () {
+      try {
+        if (localStorage.getItem("soc5_theme") === "dark") {
+          document.documentElement.classList.add("theme-dark");
+        }
+      } catch (_) {}
+    })();
+  </script>
+  <script src="./config.js"></script>
+  <script defer src="./static/app.js"></script>
+</head>
+
+<body class="">
+  <div class="app-shell">
+    <aside class="sidebar">
+      <a class="brand" href="./dashboard.html" aria-label="SOC 5 Outbound dashboard">
+        <span class="brand-mark"><img src="./static/icons/delivery.png" alt="" aria-hidden="true"></span>
+        <span>
+          <strong>OUTBOUND</strong>
+          <small>SOC 5</small>
+        </span>
+      </a>
+
+      <nav class="nav" aria-label="Primary navigation">
+        <p class="nav-label">Menu</p>
+        <a data-role-link="ops_pic fte_ops fte_mm dock_officer doc_officer" href="./dashboard.html" class="nav-link is-active">
+          <span class="nav-icon"><span class="ui-icon icon-dashboard" aria-hidden="true"></span></span>
+          <span>Dashboard</span>
+        </a>
+
+        <section data-role-link="ops_pic fte_ops" class="nav-group">
+          <button class="nav-group-button" type="button" aria-expanded="true">
+            <span class="nav-group-main">
+              <span class="nav-icon"><span class="ui-icon icon-box" aria-hidden="true"></span></span>
+              <span>Outbound</span>
+            </span>
+            <span class="chevron"><span class="ui-icon icon-chevron-down" aria-hidden="true"></span></span>
+          </button>
+          <div class="nav-group-items">
+            <a href="./lh-request.html" class="nav-link nav-child ">
+              <span class="nav-icon"><span class="ui-icon icon-truck" aria-hidden="true"></span></span>
+              <span>LH Request</span>
+              <span data-badge="ops" class="badge ">0</span>
+            </a>
+          </div>
+        </section>
+
+        <section data-role-link="fte_mm" class="nav-group">
+          <button class="nav-group-button" type="button" aria-expanded="true">
+            <span class="nav-group-main">
+              <span class="nav-icon"><span class="ui-icon icon-box" aria-hidden="true"></span></span>
+              <span>Midmile</span>
+            </span>
+            <span class="chevron"><span class="ui-icon icon-chevron-down" aria-hidden="true"></span></span>
+          </button>
+          <div class="nav-group-items">
+            <a href="./truck-request.html" class="nav-link nav-child ">
+              <span class="nav-icon"><span class="ui-icon icon-clock" aria-hidden="true"></span></span>
+              <span>Truck Request</span>
+              <span data-badge="mm" class="badge ">0</span>
+            </a>
+          </div>
+        </section>
+
+        <section data-role-link="dock_officer doc_officer" class="nav-group">
+          <button class="nav-group-button" type="button" aria-expanded="true">
+            <span class="nav-group-main">
+              <span class="nav-icon"><span class="ui-icon icon-box" aria-hidden="true"></span></span>
+              <span>Dock</span>
+            </span>
+            <span class="chevron"><span class="ui-icon icon-chevron-down" aria-hidden="true"></span></span>
+          </button>
+          <div class="nav-group-items">
+            <a href="./dock-officer.html" class="nav-link nav-child ">
+              <span class="nav-icon"><span class="ui-icon icon-clock" aria-hidden="true"></span></span>
+              <span>Dock Officer</span>
+              <span data-badge="dock" class="badge ">0</span>
+            </a>
+          </div>
+        </section>
+
+        <div data-role-link="fte_ops fte_mm" class="nav-divider"></div>
+
+        <section data-role-link="fte_ops fte_mm" class="nav-group">
+          <button class="nav-group-button" type="button" aria-expanded="true">
+            <span class="nav-group-main">
+              <span class="nav-icon"><span class="ui-icon icon-settings" aria-hidden="true"></span></span>
+              <span>Settings</span>
+            </span>
+            <span class="chevron"><span class="ui-icon icon-chevron-down" aria-hidden="true"></span></span>
+          </button>
+          <div class="nav-group-items">
+            <a href="./settings.html#add-new-role" class="nav-link nav-child ">
+              <span class="nav-icon"><span class="ui-icon icon-user-plus" aria-hidden="true"></span></span>
+              <span>Add New Role</span>
+            </a>
+            <a href="./settings.html#share" class="nav-link nav-child ">
+              <span class="nav-icon"><span class="ui-icon icon-share" aria-hidden="true"></span></span>
+              <span>Share</span>
+            </a>
+          </div>
+        </section>
+      </nav>
+
+      <div class="sidebar-user">
+        <span class="avatar user-avatar" data-user-initials>T</span>
+        <span>
+          <strong data-user-name>Test Ops PIC</strong>
+          <small data-user-role>Ops PIC</small>
+        </span>
+        <button class="icon-button" type="button" data-logout title="Logout" aria-label="Logout">
+          <span class="ui-icon icon-logout" aria-hidden="true"></span>
+        </button>
+      </div>
+    </aside>
+
+    <main class="main-panel">
+      <header class="topbar">
+        <div class="topbar-title">
+          <button class="icon-button mobile-only" type="button" data-toggle-sidebar title="Toggle sidebar" aria-label="Toggle sidebar">
+            <span class="ui-icon icon-menu" aria-hidden="true"></span>
+          </button>
+          <div>
+            <span class="topbar-kicker">Gentelella Admin</span>
+            <h1>Dashboard</h1>
+          </div>
+        </div>
+
+        <div class="topbar-actions">
+          <label class="topbar-search">
+            <span class="ui-icon icon-search" aria-hidden="true"></span>
+            <input type="search" placeholder="Search" data-global-search>
+          </label>
+          <button class="icon-button" type="button" data-toggle-theme title="Switch to dark mode" aria-label="Switch to dark mode">
+            <span class="ui-icon icon-theme" aria-hidden="true"></span>
+          </button>
+          <button class="notification-button" type="button" data-open-notifications title="Notifications" aria-label="Notifications" aria-expanded="false">
+            <span class="ui-icon icon-bell" aria-hidden="true"></span>
+            <strong data-notification-count>0</strong>
+          </button>
+          <span class="connection-pill">
+            <span class="ui-icon icon-wifi" aria-hidden="true"></span>
+            Live Connected
+          </span>
+          <div class="topbar-user user-menu" data-user-menu>
+            <button class="user-menu-button" type="button" data-toggle-user-menu aria-expanded="false">
+              <span class="avatar small user-avatar" data-user-initials>T</span>
+              <span>
+                <strong data-user-name>Test Ops PIC</strong>
+                <small data-user-role>Ops PIC</small>
+              </span>
+              <span class="ui-icon icon-chevron-down" aria-hidden="true"></span>
+            </button>
+            <div class="user-menu-panel is-hidden" data-user-menu-panel>
+              <button type="button" data-toggle-theme><span class="ui-icon icon-theme" aria-hidden="true"></span><span>Toggle theme</span></button>
+              <button type="button" data-density-toggle><span class="ui-icon icon-dashboard" aria-hidden="true"></span><span>Toggle density</span></button>
+              <button type="button" data-logout><span class="ui-icon icon-logout" aria-hidden="true"></span><span>Logout</span></button>
+            </div>
+          </div>
+          <button class="primary-button compact" type="button" data-open-login><span class="ui-icon icon-login" aria-hidden="true"></span><span>Login</span></button>
+        </div>
+      </header>
+
+      <div class="page-content">
+        <section class="panel command-view">
+  <div class="command-copy">
+    <p class="eyebrow">Live Operations</p>
+    <h2>Linehaul Command View</h2>
+    <p>Monitor request volume, handoffs, docking readiness, and exceptions from one working view.</p>
+  </div>
+  <div class="command-metrics">
+    <a href="./lh-request.html" data-drilldown-status="ALL">
+      <span>Today</span>
+      <strong data-stat-total-today>0</strong>
+      <small>Requests created</small>
+    </a>
+    <a href="./truck-request.html?status=ASSIGNED" data-drilldown-status="ASSIGNED">
+      <span>Active Flow</span>
+      <strong data-stat-confirmed-trucks>0</strong>
+      <small>Assigned, docking, or docked</small>
+    </a>
+    <a href="./lh-request.html?status=PENDING" data-drilldown-status="PENDING">
+      <span>Open Alerts</span>
+      <strong data-stat-open-alerts>0</strong>
+      <small>Needs team action</small>
+    </a>
+  </div>
+</section>
+
+<section class="dashboard-grid">
+  <article class="panel chart-panel">
+    <div class="panel-heading">
+      <div>
+        <h2>Request Trend</h2>
+        <p><span data-trend-period>6 PM - 6 AM</span> <span class="legend-dot orange"></span> Created requests</p>
+      </div>
+    </div>
+    <div class="line-chart" aria-label="Request trend chart" data-request-trend>
+      <div class="chart-scale" data-trend-scale>
+        <span>4</span>
+        <span>3</span>
+        <span>2</span>
+        <span>1</span>
+        <span>0</span>
+      </div>
+      <div class="chart-plot" data-trend-plot>
+        <span class="grid-line"></span>
+        <span class="grid-line"></span>
+        <span class="grid-line"></span>
+        <span class="grid-line"></span>
+        <div class="trend-bars" data-trend-bars></div>
+        <svg class="trend-svg" data-trend-svg viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true"></svg>
+        <div class="chart-times" data-trend-labels></div>
+      </div>
+    </div>
+  </article>
+
+  <aside class="panel priority-panel">
+    <div class="panel-heading">
+      <div>
+        <h2>Priority Work</h2>
+        <p>Queues that need action now</p>
+      </div>
+    </div>
+    <div class="priority-list">
+      <a class="priority-row urgent" href="./lh-request.html">
+        <span class="priority-icon"><span class="ui-icon icon-clock" aria-hidden="true"></span></span>
+        <span><strong>Ops Approval</strong><small>Pending or returned linehaul requests</small></span>
+        <b data-stat-pending-ops>0</b>
+      </a>
+      <a class="priority-row" href="./truck-request.html">
+        <span class="priority-icon"><span class="ui-icon icon-user-plus" aria-hidden="true"></span></span>
+        <span><strong>Midmile Handoff</strong><small>Approved requests awaiting truck action</small></span>
+        <b data-stat-pending-mm>0</b>
+      </a>
+      <a class="priority-row ready" href="./dock-officer.html">
+        <span class="priority-icon"><span class="ui-icon icon-truck" aria-hidden="true"></span></span>
+        <span><strong>Docking Queue</strong><small>Trucks ready for docking details</small></span>
+        <b data-stat-for-docking>0</b>
+      </a>
+      <a class="priority-row exception" href="./lh-request.html">
+        <span class="priority-icon"><span class="ui-icon icon-xcircle" aria-hidden="true"></span></span>
+        <span><strong>Exceptions</strong><small>REJECTED_BY_MM or CANCELLED requests</small></span>
+        <b data-stat-REJECTED_BY_MM>0</b>
+      </a>
+    </div>
+  </aside>
+</section>
+
+<section class="dashboard-widget-grid">
+  <article class="panel chart-widget">
+    <div class="panel-heading">
+      <div>
+        <h2>Status Breakdown</h2>
+        <p>Active work by workflow state</p>
+      </div>
+    </div>
+    <div class="donut-widget" data-status-donut>
+      <div class="donut-chart" aria-hidden="true"></div>
+      <div class="donut-legend">
+        <a href="./lh-request.html?status=PENDING"><i class="pending-color"></i><span>Ops</span><strong data-stat-pending-ops>0</strong></a>
+        <a href="./truck-request.html?status=APPROVED"><i class="blue-color"></i><span>Midmile</span><strong data-stat-pending-mm>0</strong></a>
+        <a href="./dock-officer.html?status=FOR_DOCKING"><i class="requested-color"></i><span>Dock</span><strong data-stat-for-docking>0</strong></a>
+        <a href="./lh-request.html?status=REJECTED_BY_MM"><i class="REJECTED_BY_MM-color"></i><span>Exceptions</span><strong data-stat-REJECTED_BY_MM>0</strong></a>
+      </div>
+    </div>
+  </article>
+
+  <article class="panel chart-widget">
+    <div class="panel-heading">
+      <div>
+        <h2>Team Workload</h2>
+        <p>Open queue distribution</p>
+      </div>
+    </div>
+    <div class="workload-bars" data-workload-bars>
+      <a href="./lh-request.html?status=PENDING" style="--value: 0"><span>Ops</span><i></i><strong data-stat-pending-ops>0</strong></a>
+      <a href="./truck-request.html?status=APPROVED" style="--value: 0"><span>Midmile</span><i></i><strong data-stat-pending-mm>0</strong></a>
+      <a href="./dock-officer.html?status=FOR_DOCKING" style="--value: 0"><span>Dock</span><i></i><strong data-stat-for-docking>0</strong></a>
+    </div>
+  </article>
+
+  <article class="panel chart-widget">
+    <div class="panel-heading">
+      <div>
+        <h2>Approval SLA</h2>
+        <p>Operational attention indicator</p>
+      </div>
+    </div>
+    <div class="sla-meter" data-sla-meter>
+      <div class="sla-ring"><strong data-sla-score>0%</strong><span>Ready</span></div>
+      <div class="sla-notes">
+        <span><i class="status-dot FOR_DOCKING"></i>Confirmed flow</span>
+        <span><i class="status-dot PENDING"></i>Open approval</span>
+        <span><i class="status-dot REJECTED_BY_MM"></i>Exceptions</span>
+      </div>
+    </div>
+  </article>
+</section>
+
+<section class="dashboard-lower-grid">
+  <article class="panel flow-panel">
+    <div class="panel-heading">
+      <div>
+        <h2>Fleet Flow</h2>
+        <p>Current movement through the linehaul process</p>
+      </div>
+    </div>
+    <div class="flow-steps">
+      <div class="flow-step">
+        <span><i class="status-dot APPROVED"></i>Midmile</span>
+        <strong data-stat-pending-mm>0</strong>
+      </div>
+      <div class="flow-step">
+        <span><i class="status-dot FOR_DOCKING"></i>For Docking</span>
+        <strong data-stat-for-docking>0</strong>
+      </div>
+      <div class="flow-step">
+        <span><i class="status-dot DOCKED"></i>Active Trucks</span>
+        <strong data-stat-confirmed-trucks>0</strong>
+      </div>
+    </div>
+  </article>
+
+  <section class="panel activity-panel">
+    <div class="panel-heading">
+      <div>
+        <h2>Recent Activity</h2>
+        <p>Latest linehaul workflow updates</p>
+      </div>
+      <button class="ghost-button compact" type="button" data-refresh-activity><span class="ui-icon icon-refresh" aria-hidden="true"></span><span>Refresh</span></button>
+    </div>
+
+    <div class="activity-list" data-activity-list>
+      <div class="empty-state">No recent request activity.</div>
+    </div>
+  </section>
+</section>
+      </div>
+    </main>
+  </div>
+
+  <div class="toast-region" data-toast-region aria-live="polite"></div>
+
+  <aside class="notification-drawer is-hidden" data-notification-drawer aria-label="Notifications">
+    <div class="drawer-header">
+      <div>
+        <p class="eyebrow">Queue Alerts</p>
+        <h2>Notifications</h2>
+      </div>
+      <button class="icon-button" type="button" data-close-notifications aria-label="Close notifications">
+        <span class="ui-icon icon-close" aria-hidden="true"></span>
+      </button>
+    </div>
+    <div class="drawer-alerts">
+      <a href="./lh-request.html?status=PENDING" class="drawer-alert">
+        <span class="status-dot PENDING"></span>
+        <span><strong>Ops approval</strong><small data-ops-pending-count>0</small></span>
+      </a>
+      <a href="./truck-request.html?status=APPROVED" class="drawer-alert">
+        <span class="status-dot APPROVED"></span>
+        <span><strong>Midmile handoff</strong><small data-mm-pending-count>0</small></span>
+      </a>
+      <a href="./dock-officer.html?status=FOR_DOCKING" class="drawer-alert">
+        <span class="status-dot FOR_DOCKING"></span>
+        <span><strong>Docking queue</strong><small data-dock-pending-count>0</small></span>
+      </a>
+    </div>
+    <div class="drawer-footer">
+      <button class="ghost-button compact" type="button" data-clear-notifications><span class="ui-icon icon-check" aria-hidden="true"></span><span>Mark read</span></button>
+    </div>
+  </aside>
+  <div class="drawer-scrim is-hidden" data-notification-scrim></div>
+
+  <div class="modal-backdrop is-hidden" data-request-detail-modal>
+    <section class="dialog detail-dialog" role="dialog" aria-modal="true" aria-labelledby="detail-title">
+      <button class="icon-button modal-close" type="button" data-close-request-detail aria-label="Close request details">
+        <span class="ui-icon icon-close" aria-hidden="true"></span>
+      </button>
+      <div class="panel-heading">
+        <div>
+          <p class="eyebrow">Request Detail</p>
+          <h2 id="detail-title" data-detail-title>Linehaul Request</h2>
+        </div>
+        <span class="status-pill" data-detail-status>Pending</span>
+      </div>
+      <div class="detail-grid" data-detail-grid></div>
+      <div class="timeline-panel">
+        <h3>Workflow Timeline</h3>
+        <div class="workflow-timeline" data-detail-timeline></div>
+      </div>
+    </section>
+  </div>
+
+  <div class="modal-backdrop is-hidden" data-login-modal>
+    <section class="login-modal" role="dialog" aria-modal="true" aria-labelledby="login-title">
+      <button class="icon-button modal-close" type="button" data-close-login aria-label="Close login"><span class="ui-icon icon-close" aria-hidden="true"></span></button>
+      <div class="login-heading">
+        <span class="brand-mark"><img src="./static/icons/delivery.png" alt="" aria-hidden="true"></span>
+        <div>
+          <p class="eyebrow">SOC 5 Outbound</p>
+          <h2 id="login-title">Sign in</h2>
+        </div>
+      </div>
+
+      <div class="segmented" role="tablist">
+        <button class="segment is-active" type="button" data-login-tab="fte">FTE</button>
+        <button class="segment" type="button" data-login-tab="backroom">Backroom</button>
+      </div>
+
+      <form class="login-form" data-login-form>
+        <input type="hidden" name="login_type" value="fte" data-login-type>
+        <label data-fte-field>
+          <span>Email</span>
+          <input name="email" type="email" autocomplete="email" placeholder="name@shopee.com">
+        </label>
+        <label data-backroom-field class="is-hidden">
+          <span>Ops ID</span>
+          <input name="ops_id" type="text" autocomplete="username" placeholder="OPS ID">
+        </label>
+        <p class="form-error" data-login-error></p>
+        <button class="primary-button full" type="submit">
+          <span class="ui-icon icon-login" aria-hidden="true"></span>
+          <span data-login-button-text>Continue</span>
+          <span class="button-spinner" aria-hidden="true"></span>
+        </button>
+      </form>
+    </section>
+  </div>
+</body>
+</html>
+

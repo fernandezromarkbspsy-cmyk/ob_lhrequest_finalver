@@ -1,0 +1,61 @@
+@import "../../frontend/static/app.css";
+@import "../../frontend/static/gentelella.css";
+
+#root {
+  min-height: 100vh;
+}
+
+.react-form {
+  display: contents;
+}
+
+.react-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 80;
+  display: grid;
+  place-items: center;
+  background: rgba(15, 23, 42, 0.45);
+  padding: 20px;
+}
+
+.react-modal-backdrop .dialog,
+.react-modal-backdrop .login-modal {
+  position: static;
+  display: block;
+  max-height: calc(100vh - 40px);
+  overflow: auto;
+}
+
+.react-clickable {
+  cursor: pointer;
+}
+
+.react-inline-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.react-action-fields {
+  display: grid;
+  gap: 10px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  margin-top: 10px;
+}
+
+.react-action-fields .react-inline-actions,
+.react-action-fields .form-error {
+  grid-column: 1 / -1;
+}
+
+.react-empty {
+  color: var(--muted);
+  padding: 16px;
+}
+
+@media (max-width: 860px) {
+  .react-action-fields {
+    grid-template-columns: 1fr;
+  }
+}

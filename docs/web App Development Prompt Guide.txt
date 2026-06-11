@@ -1,0 +1,230 @@
+﻿Develop my internal web app tool. This web app is a Truck Request Portal switching from Google Sheet and Modernize it. Use or suggest any  lightweight techstack for backend maybe Supabase, suggest frontend and etc for database use supabase free tier. Use event driven system design. 
+Note: Develop this web app Fully Free.
+
+Apply this tech stack fully FREE
+Golang Chi for Backend Framework
+React + TS for Frontend Framework
+TanStack Query for  Server State
+Zustand for Client State
+SAAS for Styling
+NGINX to Route Traffic
+Docker for Containerization
+
+Vercel for deploying
+Namecheap for domain
+GitHub for version control.
+Email: Resend + React
+Clerk for auth.
+Cloudflare for DNS.
+PostHog for analytics.
+Sentry for error tracking.
+Upstash for Redis.
+Pinecone for vector DB
+Better Stack for Monitoring
+
+Use this functions:
+Async/Await
+Load Balancers – Traffic is distributed across multiple servers instead of overwhelming one.
+Caching Layers – Frequently requested data is stored closer to users so we don’t keep hitting the main servers.
+Why it matters: Reduces database load. Improves response time, and scales efficiently.
+Examples: Redis, Memcached, CDN, Browser Cache
+** Redis→ In-memory data store
+** CDN→Serves static content faster
+** Browser Cache→ Reduces repeat request
+Databases That Scale – When Millions or Thousands of requests come in,  database needs to handle the load without becoming the bottleneck.
+Key Goal: Store and serve data reliably, fast, and at massive scale.
+Scaling Strategies: 
+Read Replicas – Distribute read traffic across multiple replicas.
+Sharding – Split data across multiple databases by key or region.
+Partitioning – Break large tables into smaller, manageable pieces.
+Backups – Reqular backups ensure durability and data safety.
+CDNS Bring Data Closer – Static content like images, videos, CSS, and JS is served from edge locations near users.
+Why it matters: Faster load times, lower latency, and less strain on servers.
+What CDNs do:
+Deliver content faster worldwide
+Reduce latency for users
+Offload traffic from origin servers
+Improve reliability and availability
+Handle traffic spikes better
+
+Microservices Architecture – Instead of one huge application, the system is broken into small, independent services that work together.
+Why it matters: Services can scale independently, deploy faster, and are more resilient.
+Key Benefits: 
+Independent Scaling: Scale what it needed, not everything.
+Faster Deployments: Deploy small services without downtime.
+Fault Isolation: If one service fails, others keep working
+Tech Flexibility: Use the best tech stack for each service
+Better Maintainability: Smaller codebases are easier to manage.
+
+Load Balancing. Distributes The Load – Load balancers ensure no single server is overwhelmed by distributing incoming requests across multiple servers.
+Why it matters:
+Improves performance, prevents downtime, and supports scale.
+Load Balancing Strategies
+Round Robin: Requests are distributed evenly.
+Least Connections: Requests go to the server with the fewest active connections.
+IP Hash: Same client IP is always sent to the same server.
+Health Checks: Unhealthy servers are removed rom rotation automatically.
+Caching Makes It Fast – Caching stores frequently requested data in memory so we don’t have to fetch it from the database every time.
+Why it matters: Reduces database load, improves response time
+Popular Caching Solutions:
+Redis
+Memcached
+Amazon ElastiCache
+DynamoDB (DAX)
+User Sessions
+
+API Responses
+What Gets Cached: 
+User Sessions: Keep users logged in without re-authenticating
+API Responses: Store frequent responses to serve quickly.
+Configurations: App settings and feature flags
+CI/CD – Automate the software release process, reduce manual effort, improve reliability, and deliver changes to users faster through continuous testing, delivery, deployment, and monitoring.
+Rate Limiting - This controls how many requests a user can Make in a given time. Without it, your API is vulnerable to abuse, spam, and even accidental overload.
+Queues & Background Jobs: Not everything should happen instantly.
+Tasks like sending emails or processing requesta and etx should run in the background to keep the app fast and responsive
+WebSockets (Real-time Systems) : Unlike HTTP, WebSockets allow continuous two-way communication. Google Sheet Data <-> web app
+This is how apps like chats, live notifications, and dashboards work in real-time 
+API Security: Never trust client input.
+Validate, sanitize, and protect endpoints against common attacks like SQL injection and XSS
+Environment Variables: Sensitive data like API keys and database credentials should never be hardcoded. Use environment variables to keep secrets secure and separate from your codebase. 
+Scalability:  system should handle growth without Breaking.
+This involves load balancing, efficient Database design, and optimizing resource Usage
+Secure passwords like a pro: Never store raw passwords in  database.
+Use bcrypt library for hashing passwords
+Hash password: Plain password converts into hashed password. Convert plain password a secure hash
+Use salt rounds far better security Never store original password
+Save only hashed value in database: Even if database leaks, Original password stays protected
+Compare entered password with stored lush. Use bcrypt compare function Never compare plain text directly
+Putting It All Together: Millions or Thousanda of requests. One goal: Deliver a fast, reliable experience – every single second
+
+Structure a Backend Properly: 
+The 3-Layer Setup
+Controller → Service → Repository
+Controller: receives request, sends response
+Service: processes business logic
+Repository: queries the database
+The Rule: One Job Per Layer. 
+A clean backend is predictable. 
+Each layer does ONE thing:
+Controller → handles HTTP
+Service → handles logic
+Repository → handles data
+How Requests Should Flow
+Request→Controller→Service→ DB → Service→Controller → Response
+If you skip layers, you lose control fast.
+
+Stop Organizing by File Type
+Don’t do:
+•/controllers
+• /services
+• /repositories
+Do:
+• /users
+• /auth
+Group by feature, not role
+
+What a Clean Feature Looks Like
+Example /users:
+ • users.controller
+ • users.service
+• users.repository
+• users.model
+Everything related = together
+
+Hardcoding Will Hurt You
+Never hardcode:
+API keys
+DB connections
+Ports
+Using environment configs → makes the app portable
+
+Non-Negotiable Rules:
+Controllers stay thin
+No business logic in routes
+Services don’t handle HTTP
+Repositories only talk to DB
+
+Should Avoid these Common causes of slow apps:
+N+1 Queries – Fetching related data inside loops creates hundreds of database calls instead of one optimized query.
+Suggestion: For one page load. Use a join. Batch the IDs. One query.
+Missing Indexes – A million rows. No index on email. Every login scans the entire table. 
+Suggestion: Add an index. One line of SQL. A thousand times faster. 
+SELECT * –   wanted one user. Loaded 10,000 into memory. 
+Suggestion: Use a WHERE clause. Use limit. Ask for what you actually need. 
+No pagination -  API returns 50,000 rows. The browser tries to render all of them. Tab dies. 
+Suggestion: Page it. 20 at time.
+Blocking the main thread – JavaScript is single-threaded. Heavy work freezes the UI. Spinning beach ball. Angry users.
+Suggestion: Move it off. Async functions. Web workers. Anything but the main thread.
+Working code is the floor. Fast code is the goal. Profile first. Then optimize. Then ship. Make it work. Make it fast.
+
+Build these Documents First: 
+1.DOCUMENT #1 (PRD)
+Product Requirement Document (PRD)
+Include:
+Clear Problem Statement
+Target Users (Who is this for?)
+Feature List (Basic → Advanced)
+User Flow (Step-by-step journey)
+Tech Preferences (Optional)
+Golden Rule: Clear PRD = 70% work already a
+
+2. DOCUMENT #2 (SYSTEM DESIGN)
+System Design Document
+Include:
+Frontend + Backend Architecture
+API Structure & Flow
+Database Schema
+Authentication & Security Flow
+Outcome: Clean, structured & scalable code
+
+3.DOCUMENT #3 (UI/UX WIREFRAME)
+UI/UX Wireframes
+Include:
+Key Screens (Home, Login, Dashboard)
+Layout Ideas (Figma / Sketches)
+Colors, Fonts & Design Style
+Insight: Better UI clarity = Less rework later
+
+4 DOCUMENT #4 (FEATURE BREAKDOWN)
+Feature Breakdown Document
+Divide big features into small tasks
+Example: 
+Login System
+Email Validation
+Password Encryption
+OTP / Auth Flow
+Benefit: Helps build step-by-step (like a developer)
+
+5.DOCUMENT #5 (MASTER PROMPT)
+Master Prompt Document
+Include:
+Project Overview
+Strict Instructions
+Tech Stack
+Code Style Guidelines
+Output Format (files, folders, structure)
+This decides: Random code X OR Production-ready output
+
+
+Before you design systems, you need to know what good means. Every system does just three things. Move data, store data, transform data. And every system is measured by three things. Availability, throughput, latency. 
+Availability means uptime.
+We measure it in nines. 99% sounds good until you realize that’s days of downtime every year. One server is a single point of failure.
+Add another server. Now you have redundancy. If one fails and the other survives, that’s fault tolerance.
+Throughput is how much work a system handles. Requests per second, queries per second, bytes per second. 
+Latency is different.
+It’s the time one request takes to finish. High throughput doesn’t guarantee low latency. 
+Every system design is a trade-off.
+Speed, reliability, scale. Improve one and you usually sacrifice another.
+
+Apply this System design
+1.Optimistic Preloading
+Suppose a user wants to sign into Google and they submit their email.  At this point, the user ID is decided.  However, there’s another step for them to enter their password.  Given that they’ve done step one, the probability that they do step two is absurdly high.  So what we do is something called optimistic preloading.  We’ll assume that they are going to fill it out,  and so we collect all of the data on the backend necessary.  Then, when they go to press the next button,  magically, that data is there right away.  Another great example of this is through Instagram.  Step one will be to attach your media.  There’s going to be a ton of background processing for that,  so we’re going to start working on that right away.  Step two would be  for the user to write their text, like their hashtags, maybe the music and the description.  By the time that stuff’s done, all of the background processing is probably complete.  So when you go to press the post button, it’s probably going to be done right away.  Now what’s very important is you cannot optimistic preloading when you cause a side
+
+
+Refer on this System Design Explanation then it should be applied: 
+
+When people say design a system properly, what does that actually mean?  Because in real projects, things don’t stay the same.  Users grow, data increases, requirements change,  and suddenly what worked before starts breaking.  That’s exactly why design principles matter.  Not as theory, but as a way to think clearly when systems get complicated.  Let’s start with scalability.  This is all about growth.  Imagine your application works perfectly for a small number of users,  but suddenly thousands or even lakhs of users start using it.  If your system cannot handle that growth, everything slows down or crashes.  So scalability means designing in a way that your system can expand when needed,  either by upgrading existing resources or by adding more systems.  Then comes reliability.  Because systems will fail at some point.  Servers go down, networks break, unexpected issues happen.  The real question is what happens next?  Does your system completely stop  or does it recover smoothly?  Reliability is about designing systems that continue working even when something goes wrong,  using backups, failover strategies, and recovery plans. 
+Now security, which is something you simply can’t ignore today.  Every system handles important data, whether it is user information,  payments, or internal business data. Security is about protecting that data properly.  This includes encryption, access control, and making sure only the right people have  access to the right things. Another important one is performance.  Users don’t wait. If something feels slow, they leave.  Performance is about how fast and responsive your system is. It could be your application speed, network delays, or database  response time. A good design identifies bottlenecks early and ensures smooth performance. Then you have  maintainability. Systems are never done. They keep evolving. New features get added. Bugs get fixed.  Improvements happen.  If your system is hard to understand, every change becomes risky.  Maintainability is about keeping things clean and structured so future changes are easy and safe.  Now, something people often overlook is cost optimization.
+In real life, everything costs money.  Servers, storage, data transfer, everything adds up.  A good architect balances performance and cost.  There is no point building something powerful if it becomes too expensive to run.  Along with that, flexibility and adaptability are very important.
+
+

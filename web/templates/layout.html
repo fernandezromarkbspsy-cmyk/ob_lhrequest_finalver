@@ -189,12 +189,12 @@
       </button>
     </div>
     <div class="drawer-alerts">
-      <a href="/outbound/lh-request?status=PENDING_OPS" class="drawer-alert">
-        <span class="status-dot PENDING_OPS"></span>
+      <a href="/outbound/lh-request?status=PENDING" class="drawer-alert">
+        <span class="status-dot PENDING"></span>
         <span><strong>Ops approval</strong><small data-ops-pending-count>{{.PendingOps}}</small></span>
       </a>
-      <a href="/midmile/truck-request?status=PENDING_MM" class="drawer-alert">
-        <span class="status-dot PENDING_MM"></span>
+      <a href="/midmile/truck-request?status=APPROVED" class="drawer-alert">
+        <span class="status-dot APPROVED"></span>
         <span><strong>Midmile handoff</strong><small data-mm-pending-count>{{.PendingMM}}</small></span>
       </a>
       <a href="/dock/officer?status=FOR_DOCKING" class="drawer-alert">

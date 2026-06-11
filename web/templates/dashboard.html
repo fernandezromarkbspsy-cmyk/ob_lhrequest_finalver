@@ -20,7 +20,7 @@
       <strong data-stat-confirmed-trucks>{{.Stats.ConfirmedTrucks}}</strong>
       <small>Assigned, docking, or docked</small>
     </a>
-    <a href="/outbound/lh-request?status=PENDING_OPS" data-drilldown-status="PENDING_OPS">
+    <a href="/outbound/lh-request?status=PENDING" data-drilldown-status="PENDING">
       <span>Open Alerts</span>
       <strong data-stat-open-alerts>{{add .Stats.PendingOps (add .Stats.PendingMM .Stats.ForDocking)}}</strong>
       <small>Needs team action</small>
@@ -81,8 +81,8 @@
       </a>
       <a class="priority-row exception" href="/outbound/lh-request">
         <span class="priority-icon"><span class="ui-icon icon-xcircle" aria-hidden="true"></span></span>
-        <span><strong>Exceptions</strong><small>Rejected or canceled requests</small></span>
-        <b data-stat-rejected>{{.Stats.Rejected}}</b>
+        <span><strong>Exceptions</strong><small>REJECTED_BY_MM or CANCELLED requests</small></span>
+        <b data-stat-REJECTED_BY_MM>{{.Stats.Rejected}}</b>
       </a>
     </div>
   </aside>
@@ -99,10 +99,10 @@
     <div class="donut-widget" data-status-donut>
       <div class="donut-chart" aria-hidden="true"></div>
       <div class="donut-legend">
-        <a href="/outbound/lh-request?status=PENDING_OPS"><i class="pending-color"></i><span>Ops</span><strong data-stat-pending-ops>{{.Stats.PendingOps}}</strong></a>
-        <a href="/midmile/truck-request?status=PENDING_MM"><i class="blue-color"></i><span>Midmile</span><strong data-stat-pending-mm>{{.Stats.PendingMM}}</strong></a>
+        <a href="/outbound/lh-request?status=PENDING"><i class="pending-color"></i><span>Ops</span><strong data-stat-pending-ops>{{.Stats.PendingOps}}</strong></a>
+        <a href="/midmile/truck-request?status=APPROVED"><i class="blue-color"></i><span>Midmile</span><strong data-stat-pending-mm>{{.Stats.PendingMM}}</strong></a>
         <a href="/dock/officer?status=FOR_DOCKING"><i class="requested-color"></i><span>Dock</span><strong data-stat-for-docking>{{.Stats.ForDocking}}</strong></a>
-        <a href="/outbound/lh-request?status=REJECTED"><i class="rejected-color"></i><span>Exceptions</span><strong data-stat-rejected>{{.Stats.Rejected}}</strong></a>
+        <a href="/outbound/lh-request?status=REJECTED_BY_MM"><i class="REJECTED_BY_MM-color"></i><span>Exceptions</span><strong data-stat-REJECTED_BY_MM>{{.Stats.Rejected}}</strong></a>
       </div>
     </div>
   </article>
@@ -115,8 +115,8 @@
       </div>
     </div>
     <div class="workload-bars" data-workload-bars>
-      <a href="/outbound/lh-request?status=PENDING_OPS" style="--value: {{.Stats.PendingOps}}"><span>Ops</span><i></i><strong data-stat-pending-ops>{{.Stats.PendingOps}}</strong></a>
-      <a href="/midmile/truck-request?status=PENDING_MM" style="--value: {{.Stats.PendingMM}}"><span>Midmile</span><i></i><strong data-stat-pending-mm>{{.Stats.PendingMM}}</strong></a>
+      <a href="/outbound/lh-request?status=PENDING" style="--value: {{.Stats.PendingOps}}"><span>Ops</span><i></i><strong data-stat-pending-ops>{{.Stats.PendingOps}}</strong></a>
+      <a href="/midmile/truck-request?status=APPROVED" style="--value: {{.Stats.PendingMM}}"><span>Midmile</span><i></i><strong data-stat-pending-mm>{{.Stats.PendingMM}}</strong></a>
       <a href="/dock/officer?status=FOR_DOCKING" style="--value: {{.Stats.ForDocking}}"><span>Dock</span><i></i><strong data-stat-for-docking>{{.Stats.ForDocking}}</strong></a>
     </div>
   </article>
@@ -132,8 +132,8 @@
       <div class="sla-ring"><strong data-sla-score>0%</strong><span>Ready</span></div>
       <div class="sla-notes">
         <span><i class="status-dot FOR_DOCKING"></i>Confirmed flow</span>
-        <span><i class="status-dot PENDING_OPS"></i>Open approval</span>
-        <span><i class="status-dot REJECTED"></i>Exceptions</span>
+        <span><i class="status-dot PENDING"></i>Open approval</span>
+        <span><i class="status-dot REJECTED_BY_MM"></i>Exceptions</span>
       </div>
     </div>
   </article>
@@ -149,7 +149,7 @@
     </div>
     <div class="flow-steps">
       <div class="flow-step">
-        <span><i class="status-dot PENDING_MM"></i>Midmile</span>
+        <span><i class="status-dot APPROVED"></i>Midmile</span>
         <strong data-stat-pending-mm>{{.Stats.PendingMM}}</strong>
       </div>
       <div class="flow-step">
